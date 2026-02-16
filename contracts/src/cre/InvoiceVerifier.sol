@@ -5,7 +5,7 @@ import {FunctionsClient} from "@chainlink/contracts/src/v0.8/functions/v1_0_0/Fu
 import {ConfirmedOwner} from "@chainlink/contracts/src/v0.8/shared/access/ConfirmedOwner.sol";
 import {FunctionsRequest} from "@chainlink/contracts/src/v0.8/functions/v1_0_0/libraries/FunctionsRequest.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "../cre/InvoiceNFT.sol";
+import "../InvoiceNFT.sol";
 
 contract InvoiceVerifier is FunctionsClient, Ownable {
     using FunctionsRequest for FunctionsRequest.Request;
@@ -28,8 +28,8 @@ contract InvoiceVerifier is FunctionsClient, Ownable {
         address _invoiceNFT,
         bytes32 _donId,
         uint64 _subscriptionId,
-        address _functionRouter,
-    ) FunctionClient(_functionRouter) Ownable(msg.sender) {
+        address _functionRouter
+    ) FunctionsClient(_functionRouter) Ownable(msg.sender) {
         invoiceNFT = InvoiceNFT(_invoiceNFT);
         donId = _donId;
         subscriptionId = _subscriptionId;
@@ -83,7 +83,7 @@ contract InvoiceVerifier is FunctionsClient, Ownable {
 
         // Send the request
         bytes32 requestId = _sendRequest(
-            req.encode(), 
+            req.encodeCBOR(), 
             subscriptionId, 
             callbackGasLimit, 
             donId
