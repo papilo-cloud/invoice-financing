@@ -84,7 +84,7 @@ contract InvoiceNFT is ERC721, Ownable {
         emit InvoiceVerified(tokenId, riskScore);
     }
 
-    function markPaid(uint256 tokenId) external {
+    function markAsPaid(uint256 tokenId) external {
         require(_ownerOf(tokenId) != address(0), "Invoice does not exists");
         require(!invoices[tokenId].isPaid, "Already paid");
 
