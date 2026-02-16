@@ -3,9 +3,9 @@ pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
-import "../InvoiceNFT.sol";
+import "./InvoiceNFT.sol";
 
 contract InvoiceFractionalizationPool is ERC1155, Ownable, ReentrancyGuard {
     error InvoiceNotVerified(uint256 invoiceId);
@@ -70,7 +70,7 @@ contract InvoiceFractionalizationPool is ERC1155, Ownable, ReentrancyGuard {
         uint256 pricePerFraction
     ) external returns (uint256) {
 
-        (, , , uint256 dueDate, bool isVerified, bool isPaid, ) = invoiceNFT.invoices(invoiceTokenId);
+        (, , , uint256 dueDate,, bool isPaid, bool isVerified, ) = invoiceNFT.invoices(invoiceTokenId);
 
 
         if (invoiceNFT.ownerOf(invoiceTokenId) != msg.sender) {
@@ -163,7 +163,7 @@ contract InvoiceFractionalizationPool is ERC1155, Ownable, ReentrancyGuard {
         }
 
         // Check invoice is still valid (not expired or paid) before allowing purchase
-        (,,,uint256 dueDate,,,bool isPaid) = invoiceNFT.invoices(fr.invoiceTokenId);
+        (,,,uint256 dueDate,,bool isPaid,,) = invoiceNFT.invoices(fr.invoiceTokenId);
         if (block.timestamp >= dueDate) {
             revert InvoiceExpired(fr.invoiceTokenId, dueDate);
         }
@@ -252,17 +252,17 @@ contract InvoiceFractionalizationPool is ERC1155, Ownable, ReentrancyGuard {
             fr.pricePerFraction,
             fr.issuer,
             fr.isActive
-        )
+        );
     }
 
     /**
      * Returns whether an invoice can be fractionalized.
      * @param invoiceTokenId The ID of the invoice to check.
-     * @return canFractionalize Whether the invoice can be fractionalized.
+     * @return canBeFractionalized Whether the invoice can be fractionalized.
      * @return reason A human-readable reason for the result.
      */
     function canFractionalize(uint256 invoiceTokenId) external view returns (
-        bool canFractionalize,
+        bool canBeFractionalized,
         string memory reason
     ) {
         address owner = invoiceNFT.ownerOf(invoiceTokenId);
@@ -270,7 +270,7 @@ contract InvoiceFractionalizationPool is ERC1155, Ownable, ReentrancyGuard {
             revert NotInvoiceOwner(msg.sender, address(0));
         }
 
-        (,,,uint256 dueDate,, bool isVerified, bool isPaid,) = invoiceNFT.invoices(invoiceTokenId);
+        (,,,uint256 dueDate,, bool isPaid, bool isVerified,) = invoiceNFT.invoices(invoiceTokenId);
 
         if (!isVerified) {
             revert InvoiceNotVerified(invoiceTokenId);
