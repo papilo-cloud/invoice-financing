@@ -17,25 +17,46 @@ contract InvoiceNFT is ERC721, Ownable {
     }
 
     uint256 private _tokenIdCounter;
-    mapping(uint256 => Invoice) private _invoices;
+    mapping(uint256 => Invoice) public invoices;
+
+    // Authorized verifier contract address
+    address public verifier;
 
     event InvoiceCreated(uint256 indexed tokenId, address indexed issuer, string debtorName, uint256 faceValue, uint256 dueDate);
     event InvoicePaid(uint256 indexed tokenId, address indexed payer);
     event InvoiceVerified(uint256 indexed tokenId, uint256 riskScore);
+    event VerifierUpdated(address indexed newVerifier);
 
     constructor() ERC721("InvoiceNFT", "INFT") Ownable(msg.sender) {}
 
+    function setVerifier(address _verifier) external onlyOwner {
+        require(_verifier != address(0), "Invalid verifier");
+        verifier = _verifier;
+        emit VerifierUpdated(_verifier);
+    }
+
+     modifier onlyVerifier() {
+        require(msg.sender == verifier, "Caller is not the authorized verifier");
+        _;
+    }
+
+    /**
+     * @notice Creates a new invoice.
+     * @param debtorName The name of the debtor.
+     * @param faceValue The face value of the invoice.
+     * @param dueDate The due date of the invoice.
+     */
     function createInvoice(
         string memory debtorName,
         uint256 faceValue,
         uint256 dueDate
-    ) external onlyOwner {
+    ) external returns (uint256) {
         require(dueDate > block.timestamp, "Due date must be in the future");
         require(faceValue > 0, "Face value must be greater than zero");
 
         uint256 tokenId = _tokenIdCounter++;
 
-        _invoices[tokenId] = Invoice({
+        invoices[tokenId] = Invoice({
             issuer: msg.sender,
             debtorName: debtorName,
             faceValue: faceValue,
@@ -48,34 +69,36 @@ contract InvoiceNFT is ERC721, Ownable {
 
         _safeMint(msg.sender, tokenId);
         emit InvoiceCreated(tokenId, msg.sender, debtorName, faceValue, dueDate);
+
+        return tokenId;
     }
 
-    function verifyInvoice(uint256 tokenId, uint256 riskScore) external onlyOwner {
+    function markVerified(uint256 tokenId, uint256 riskScore) external onlyVerifier {
         require(_ownerOf(tokenId) != address(0), "Invoice does not exists");
         require(riskScore <= 100, "Invalid risk score");
-        require(!_invoices[tokenId].isVerified, "Already verified");
+        require(!invoices[tokenId].isVerified, "Already verified");
 
-        _invoices[tokenId].riskScore = riskScore;
-        _invoices[tokenId].isVerified = true;
+        invoices[tokenId].riskScore = riskScore;
+        invoices[tokenId].isVerified = true;
 
         emit InvoiceVerified(tokenId, riskScore);
     }
 
-    function markPaid(uint256 tokenId) external onlyOwner {
+    function markPaid(uint256 tokenId) external {
         require(_ownerOf(tokenId) != address(0), "Invoice does not exists");
-        require(!_invoices[tokenId].isPaid, "Already paid");
+        require(!invoices[tokenId].isPaid, "Already paid");
 
-        _invoices[tokenId].isPaid = true;
+        invoices[tokenId].isPaid = true;
         emit InvoicePaid(tokenId, msg.sender);
     }
 
     function getInvoice(uint256 tokenId) external view returns (Invoice memory) {
         require(_ownerOf(tokenId) != address(0), "Invoice does not exists");
-        return _invoices[tokenId];
+        return invoices[tokenId];
     }
 
     function isVerified(uint256 tokenId) external view returns (bool) {
         require(_ownerOf(tokenId) != address(0), "Invoice does not exists");
-        return _invoices[tokenId].isVerified;
+        return invoices[tokenId].isVerified;
     }
 }
