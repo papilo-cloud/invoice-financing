@@ -231,6 +231,10 @@ contract InvoiceFractionalizationPool is ERC1155, Ownable, ReentrancyGuard {
         return _investors[fractionId];
     }
 
+    function getFractionIdByInvoice(uint256 invoiceTokenId) external view returns (uint256) {
+        return invoiceToFractionalToken[invoiceTokenId];
+    }
+
     function getInvestments(uint256 fractionId, address investor) external view returns (uint256) {
         return investments[fractionId][investor];
     }
