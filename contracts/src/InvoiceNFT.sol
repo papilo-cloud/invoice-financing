@@ -36,7 +36,7 @@ contract InvoiceNFT is ERC721, Ownable {
     }
 
      modifier onlyVerifier() {
-        require(msg.sender == verifier, "Caller is not the authorized verifier");
+        require(msg.sender == verifier || msg.sender == owner(), "Caller is not the authorized verifier");
         _;
     }
 
@@ -84,7 +84,7 @@ contract InvoiceNFT is ERC721, Ownable {
         emit InvoiceVerified(tokenId, riskScore);
     }
 
-    function markAsPaid(uint256 tokenId) external {
+    function markAsPaid(uint256 tokenId) external onlyOwner {
         require(_ownerOf(tokenId) != address(0), "Invoice does not exists");
         require(!invoices[tokenId].isPaid, "Already paid");
 
