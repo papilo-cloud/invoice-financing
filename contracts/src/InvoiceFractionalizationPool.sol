@@ -41,6 +41,7 @@ contract InvoiceFractionalizationPool is ERC1155Supply, Ownable, ReentrancyGuard
 
     InvoiceNFT public invoiceNFT;
     address public platformFeeRecipient;
+    address public paymentDistributor;
 
     struct FractionalInvoice {
         uint256 invoiceTokenId;
@@ -68,7 +69,7 @@ contract InvoiceFractionalizationPool is ERC1155Supply, Ownable, ReentrancyGuard
     mapping(uint256 => Buyout) public buyouts; // fractionId => Buyout details
     mapping(uint256 => mapping(address => bool)) public hasClaimedBuyout;
 
-    uint256 private _fractionalTokenIdCounter;
+    uint256 private _fractionalTokenIdCounter = 1;
 
     uint256 public coolDownPeriod = 5 minutes; // Cool-down period for redemption
     uint256 public buyoutPremium = 110; // 10% premium for buyouts
@@ -102,10 +103,29 @@ contract InvoiceFractionalizationPool is ERC1155Supply, Ownable, ReentrancyGuard
         uint256 indexed invoiceTokenId,
         address indexed recipient
     );
+    event DistributorUpdated(address indexed newDistributor);
+
+    modifier onlyDistributor() {
+        require(msg.sender == paymentDistributor, "Not distributor");
+        _;
+    }
 
     constructor(address _invoiceNFT) ERC1155("") Ownable(msg.sender) {
         invoiceNFT = InvoiceNFT(_invoiceNFT);
         platformFeeRecipient = msg.sender;
+    }
+
+    /**
+     * @dev Sets the payment distributor address.
+     * @param _distributor The address of the payment distributor.
+     */
+    function setPaymentDistributor(address _distributor)
+        external
+        onlyOwner
+    {
+        require(_distributor != address(0), "Invalid address");
+        paymentDistributor = _distributor;
+        emit DistributorUpdated(_distributor);
     }
 
     /**
@@ -508,6 +528,14 @@ contract InvoiceFractionalizationPool is ERC1155Supply, Ownable, ReentrancyGuard
         if (!success) {
             revert PlatformFeeTransferFailed();
         }
+    }
+
+    function burnOnRepayment(uint256 fractionId, address holder, uint256 amount) external onlyDistributor {
+         if (amount == 0) {
+            revert InvalidAmount(amount);
+        }
+
+        _burn(holder, fractionId, amount);
     }
 
     function updateCooldownPeriod(uint256 newCooldown) external onlyOwner {
