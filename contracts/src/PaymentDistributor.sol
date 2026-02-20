@@ -179,6 +179,13 @@ contract PaymentDistributor is Ownable, ReentrancyGuard {
         return balance * distribution.paymentPerFraction;
     }
 
+    function paymentAmounts(uint256 invoiceTokenId) external view returns (uint256) {
+        Distribution memory distribution = distributions[invoiceTokenId];
+        if (!distribution.isPaid) {
+            revert NoPaymentReceived(invoiceTokenId);
+        }
+        return distribution.totalPayment;
+    }
     receive() external payable {
         revert("Direct payments not allowed, use receivePayment function");
     }
