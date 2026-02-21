@@ -6,7 +6,7 @@ import {InvoiceNFT} from "../src/InvoiceNFT.sol";
 import {PaymentDistributor} from "../src/PaymentDistributor.sol";
 import {InvoiceVerifier} from "../src/cre/InvoiceVerifier.sol";
 
-contract InvoiceNFTTest is Test {
+contract InvoiceNFTTest is Test { // markAsPaid
     InvoiceNFT private invoiceNFT;
     InvoiceVerifier private invoiceVerifier;
     PaymentDistributor private distributor;
