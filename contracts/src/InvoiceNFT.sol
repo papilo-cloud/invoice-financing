@@ -3,6 +3,7 @@ pragma solidity ^0.8.20;
 
 import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {NFTDescriptor} from "./libraries/NFTDescriptor.sol";
 
 contract InvoiceNFT is ERC721, Ownable {
     error InvoiceDoesNotExist(uint256 tokenId);
@@ -149,6 +150,27 @@ contract InvoiceNFT is ERC721, Ownable {
 
     function isPaid(uint256 tokenId) external view exists(tokenId) returns (bool) {
         return invoices[tokenId].isPaid;
+    }
+
+    /**
+     * @notice Returns the token URI for a given token ID, which includes the metadata and SVG image.
+     * @param tokenId The token ID to retrieve metadata for.
+     * @return The metadata URI for the token.
+     * @dev Overrides ERC721 tokenURI to create a dynamic SVG image and metadata.
+     */
+    function tokenURI(uint256 tokenId) public view override exists(tokenId) returns (string memory) {
+        Invoice memory invoice = invoices[tokenId];
+        NFTDescriptor.InvoiceParams memory params = NFTDescriptor.InvoiceParams({
+            tokenId: tokenId,
+            debtorName: invoice.debtorName,
+            faceValue: invoice.faceValue,
+            dueDate: invoice.dueDate,
+            riskScore: invoice.riskScore,
+            isPaid: invoice.isPaid,
+            isVerified: invoice.isVerified
+        });
+
+        return NFTDescriptor.constructTokenURI(params);
     }
 
     function _onlyVerifier() internal view {
