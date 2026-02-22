@@ -17,6 +17,7 @@ contract InvoiceVerifier is FunctionsClient, Ownable {
     uint32 public callbackGasLimit;
 
     mapping(bytes32 => uint256) public requestToInvoiceId;
+    mapping(bytes32 => bool) public requestExists;
 
     string public verificationSource;
 
@@ -55,7 +56,7 @@ contract InvoiceVerifier is FunctionsClient, Ownable {
      * @param invoiceId The ID of the invoice to verify.
      * @return bytes32 The request ID for tracking the verification process.
      */
-    function requestVerification(uint256 invoiceId) external returns (bytes32) {
+    function requestVerification(uint256 invoiceId) external onlyOwner returns (bytes32) {
         require(invoiceNFT.ownerOf(invoiceId) != address(0), "Invoice does not exist");
         require(bytes(verificationSource).length > 0, "Verification source is not set");
 
@@ -90,6 +91,7 @@ contract InvoiceVerifier is FunctionsClient, Ownable {
         );
 
         requestToInvoiceId[requestId] = invoiceId;
+        requestExists[requestId] = true;
 
         emit VerificationRequested(requestId, invoiceId);
 
@@ -108,6 +110,11 @@ contract InvoiceVerifier is FunctionsClient, Ownable {
         bytes memory response, 
         bytes memory err
     ) internal override {
+        if (!requestExists[requestId]) {
+            // If the request ID does not exist, ignore the fulfillment
+            return;
+        }
+        
         uint256 invoiceId = requestToInvoiceId[requestId];
 
         if (err.length > 0) {
@@ -131,6 +138,7 @@ contract InvoiceVerifier is FunctionsClient, Ownable {
         emit VerificationFulfilled(invoiceId, riskScore, true);
 
         delete requestToInvoiceId[requestId];
+        delete requestExists[requestId];
     }
 
     /**
