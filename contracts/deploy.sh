@@ -46,5 +46,3 @@ fi
 echo ""
 echo "Deployment successful!"
 echo ""
-
-chmod +x deploy.sh
