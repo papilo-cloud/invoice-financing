@@ -164,8 +164,6 @@ contract InvoiceVerifier is FunctionsClient, Ownable {
         emit VerificationFulfilled(invoiceId, riskScore, true);
     }
 
-    function subssc
-
     // Helper function to convert uint to string
     function _uint2str(uint256 _i) internal pure returns (string memory str) {
         if (_i == 0) {
