@@ -21,6 +21,8 @@ contract InvoiceVerifier is FunctionsClient, Ownable {
 
     string public verificationSource;
 
+    mapping(uint256 => bool) public verificationRequested;
+
     event VerificationRequested(bytes32 indexed requestId, uint256 indexed invoiceId);
     event VerificationFulfilled(uint256 indexed invoiceId, uint256 riskScore, bool success);
     event VerificationFailed(uint256 indexed invoiceId, bytes32 requestId, string reason);
@@ -56,19 +58,22 @@ contract InvoiceVerifier is FunctionsClient, Ownable {
      * @param invoiceId The ID of the invoice to verify.
      * @return bytes32 The request ID for tracking the verification process.
      */
-    function requestVerification(uint256 invoiceId) external onlyOwner returns (bytes32) {
+    function requestVerification(uint256 invoiceId) external returns (bytes32) {
         require(invoiceNFT.ownerOf(invoiceId) != address(0), "Invoice does not exist");
         require(bytes(verificationSource).length > 0, "Verification source is not set");
 
         // Fetch invoice details from the InvoiceNFT contract
         (
-            ,
+            address issuer,
             string memory debtorName,
             uint256 faceValue,
             uint256 dueDate,
             ,,,
 
         ) = invoiceNFT.invoices(invoiceId);
+
+        require(issuer == msg.sender, "Only invoice issuer can request verification");
+        require(!verificationRequested[invoiceId], "Verification already requested");
 
         // Build the Functions request
         FunctionsRequest.Request memory req;
@@ -89,9 +94,10 @@ contract InvoiceVerifier is FunctionsClient, Ownable {
             callbackGasLimit, 
             donId
         );
-
+        
         requestToInvoiceId[requestId] = invoiceId;
         requestExists[requestId] = true;
+        verificationRequested[invoiceId] = true;
 
         emit VerificationRequested(requestId, invoiceId);
 
@@ -119,6 +125,7 @@ contract InvoiceVerifier is FunctionsClient, Ownable {
 
         if (err.length > 0) {
             string memory reason = string(err);
+            verificationRequested[invoiceId] = false;
             emit VerificationFailed(invoiceId, requestId, reason);
             return;
         }
@@ -126,6 +133,7 @@ contract InvoiceVerifier is FunctionsClient, Ownable {
         (bool success, uint256 riskScore) = abi.decode(response, (bool, uint256));
 
         if (!success) {
+            verificationRequested[invoiceId] = false;
             emit VerificationFailed(invoiceId, requestId, "Verification failed");
             return;
         }
@@ -151,9 +159,12 @@ contract InvoiceVerifier is FunctionsClient, Ownable {
         require(riskScore <= 100, "Invalid risk score");
 
         invoiceNFT.markVerified(invoiceId, riskScore);
+        verificationRequested[invoiceId] = true;
 
         emit VerificationFulfilled(invoiceId, riskScore, true);
     }
+
+    function subssc
 
     // Helper function to convert uint to string
     function _uint2str(uint256 _i) internal pure returns (string memory str) {
