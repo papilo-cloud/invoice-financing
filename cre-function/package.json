@@ -1,0 +1,19 @@
+{
+  "name": "invoice-verification-cre",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Invoice Verification with Chainlink CRE SDK",
+  "scripts": {
+    "postinstall": "bunx cre-setup",
+    "deploy": "node scripts/deploy.js",
+    "simulate": "node scripts/simulate.js",
+    "request": "node scripts/request.js",
+    "monitor": "node scripts/monitor.js",
+    "test": "bun run scripts/simulate.js"
+  },
+  "dependencies": {
+    "@chainlink/cre-sdk": "^0.0.8-alpha",
+    "viem": "^2.46.2",
+    "dotenv": "^16.6.1"
+  }
+}
