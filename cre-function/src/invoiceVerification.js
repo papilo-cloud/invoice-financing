@@ -4,6 +4,9 @@
  * This code runs in the Chainlink Decentralized Oracle Network
  * and calculates a risk score for invoices.
  * 
+ * EXTERNAL INTEGRATION: CoinGecko API for ETH market sentiment
+ * 
+ * 
  * @param {string[]} args - [invoiceId, debtorName, faceValue, dueDate]
  * @returns {Uint8Array} - Encoded risk score
  */
@@ -36,6 +39,82 @@ const TRUSTED_COMPANIES = [
   'CISCO',
   'INTEL',
 ];
+
+// ============================================
+// External API Integration - CoinGecko
+// ============================================
+
+/**
+ * EXTERNAL INTEGRATION: Fetch ETH market sentiment from CoinGecko
+ */
+async function getMarketSentiment() {
+  try {
+    console.log('Fetching market data from CoinGecko API...');
+    
+    const response = await Functions.makeHttpRequest({
+      url: 'https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd&include_24hr_change=true&include_market_cap=true',
+      timeout: 9000,
+    });
+
+    if (response.error) {
+      console.log('CoinGecko API error:', response.error);
+      return { adjustment: 0, reason: 'API unavailable' };
+    }
+
+    const data = response.data;
+    const ethPrice = data.ethereum?.usd || 0;
+    const ethChange24h = data.ethereum?.usd_24h_change || 0;
+    const marketCap = data.ethereum?.usd_market_cap || 0;
+
+    console.log('Market data received:');
+    console.log('  - ETH Price: $', ethPrice.toFixed(2));
+    console.log('  - 24h Change:', ethChange24h.toFixed(2), '%');
+    console.log('  - Market Cap: $', (marketCap / 1e9).toFixed(2), 'B');
+
+    // Calculate market sentiment adjustment
+    let adjustment = 0;
+    let reason = '';
+
+    // Bull market = lower risk for crypto-based invoices
+    if (ethChange24h > 10) {
+      adjustment = 15;
+      reason = 'Strong bull market (+15)';
+    } else if (ethChange24h > 5) {
+      adjustment = 10;
+      reason = 'Bull market (+10)';
+    } else if (ethChange24h > 2) {
+      adjustment = 5;
+      reason = 'Positive sentiment (+5)';
+    }
+    // Bear market = higher risk
+    else if (ethChange24h < -10) {
+      adjustment = -15;
+      reason = 'Strong bear market (-15)';
+    } else if (ethChange24h < -5) {
+      adjustment = -10;
+      reason = 'Bear market (-10)';
+    } else if (ethChange24h < -2) {
+      adjustment = -5;
+      reason = 'Negative sentiment (-5)';
+    } else {
+      reason = 'Neutral market (0)';
+    }
+
+    // Additional: High ETH price = more stable market
+    if (ethPrice > 4000) {
+      adjustment += 5;
+      reason += ', High price stability (+5)';
+    }
+
+    console.log('Market sentiment adjustment:', adjustment);
+    console.log('Reason:', reason);
+
+    return { adjustment, reason, ethPrice, ethChange24h };
+  } catch (error) {
+    console.error('Error fetching market data:', error);
+    return { adjustment: 0, reason: 'API call failed' };
+  }
+}
 
 // ============================================
 // Main Handler
@@ -134,6 +213,24 @@ if (daysUntilDue > 0) {
   }
 }
 
+// ============================================
+// Factor 5: EXTERNAL INTEGRATION - Market Sentiment
+// ============================================
+
+console.log('');
+console.log('=== External API Integration ===');
+const marketData = await getMarketSentiment();
+riskScore += marketData.adjustment;
+scoringDetails.push(`Market sentiment adjustment: ${marketData.adjustment > 0 ? '+' : ''}${marketData.adjustment} (${marketData.reason})`);
+
+if (marketData.ethPrice) {
+  console.log('External data successfully integrated into risk calculation');
+}
+
+// ============================================
+// Final Score Calculation
+// ============================================
+
 // Cap score between 0 and 100
 riskScore = Math.max(0, Math.min(100, riskScore));
 
@@ -141,16 +238,28 @@ console.log('=== Scoring Breakdown ===');
 scoringDetails.forEach(detail => console.log('-', detail));
 console.log('=== Final Risk Score:', riskScore, '===');
 
+
 // ============================================
-// Response Encoding
+// Response Encoding - ABI encode (bool, uint256)
 // ============================================
 
-// Encode as uint256 for Solidity
-// The CRE runtime provides Functions.encodeUint256()
-// return Functions.encodeUint256(riskScore);
-
-
-return Functions.encodeAbiParameters(
-  ["bool", "uint256"],
-  [true, riskScore]
-);
+/**
+ * ABI encode (bool, uint256) for Solidity
+ * Solidity expects: abi.decode(response, (bool, uint256))
+ */
+function encodeResponse(success, riskScore) {
+  const buffer = new Uint8Array(64);
+  
+  // First 32 bytes: bool (true = 1, false = 0)
+  buffer[31] = success ? 1 : 0;
+  
+  // Next 32 bytes: uint256 (risk score)
+  const score = BigInt(riskScore);
+  for (let i = 0; i < 32; i++) {
+    buffer[63 - i] = Number((score >> BigInt(i * 8)) & BigInt(0xff));
+  }
+  
+  return buffer;
+}
+console.log('Encoding response: success=true, riskScore=', riskScore);
+return encodeResponse(true, riskScore);

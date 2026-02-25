@@ -1,4 +1,9 @@
 import { readFileSync } from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 /**
  * Simulate the verification function locally
@@ -8,7 +13,6 @@ import { readFileSync } from 'fs';
 // Mock Functions object (simulates Chainlink runtime)
 globalThis.Functions = {
   encodeUint256: (value) => {
-    // Simple encoding for testing
     const buffer = new Uint8Array(32);
     const hex = BigInt(value).toString(16).padStart(64, '0');
     for (let i = 0; i < 32; i++) {
@@ -16,18 +20,39 @@ globalThis.Functions = {
     }
     return buffer;
   },
+  
+  // Mock HTTP request for simulation
+  makeHttpRequest: async (config) => {
+    console.log('Mock API call to:', config.url);
+    
+    // Simulate CoinGecko response
+    if (config.url.includes('coingecko')) {
+      return {
+        data: {
+          ethereum: {
+            usd: 1857.50,
+            usd_24h_change: 3.45,
+            usd_market_cap: 342500000000
+          }
+        }
+      };
+    }
+    
+    return { error: 'Unknown API' };
+  }
 };
 
+// Test cases
 const testCases = [
   {
-    name: 'Trusted Company - Apple Inc',
+    name: 'Trusted Company - Apple Inc (Bull Market)',
     args: [
       '0', // invoiceId
       'Apple Inc', // debtorName
       '50000000000000000000000', // 50000 ETH
       String(Math.floor(Date.now() / 1000) + 60 * 86400), // 60 days from now
     ],
-    expectedRange: [80, 100],
+    expectedRange: [85, 100],
   },
   {
     name: 'Unknown Company - Good Terms',
@@ -64,8 +89,8 @@ const testCases = [
 async function simulate() {
   console.log('Simulating Invoice Verification Locally\n');
 
-  // Read source code
-  const sourceCode = readFileSync('./invoiceVerification.js', 'utf8');
+  const sourcePath = path.resolve(__dirname, '../src/invoiceVerification.js');
+  const sourceCode = readFileSync(sourcePath, 'utf8');
 
   // Run each test case
   for (const testCase of testCases) {
@@ -73,31 +98,41 @@ async function simulate() {
     console.log('Test Case:', testCase.name);
     console.log('═══════════════════════════════════════════');
 
-    // Create function from source
-    const func = new Function('args', sourceCode + '\n//# sourceURL=invoiceVerification.js');
+    const AsyncFunction = async function() {}.constructor;
+    const func = new AsyncFunction('args', sourceCode);
 
     try {
-      const result = func(testCase.args);
+      const result = await func(testCase.args);
       
+      let success = false;
       let score = 0;
+
       if (result instanceof Uint8Array) {
-        // Convert last bytes to number
-        for (let i = 24; i < 32; i++) {
+        // First 32 bytes = bool
+        success = result[31] === 1;
+        
+        // Next 32 bytes = uint256 (risk score)
+        for (let i = 32; i < 64; i++) {
           score = score * 256 + result[i];
         }
       }
 
-      console.log('\n Result:', score, '/100');
+      console.log('\n Result:');
+      console.log('  - Success:', success);
+      console.log('  - Risk Score:', score, '/ 100');
       
       const [min, max] = testCase.expectedRange;
-      if (score >= min && score <= max) {
+      if (success && score >= min && score <= max) {
         console.log('PASS - Score in expected range', `[${min}-${max}]`);
+      } else if (!success) {
+        console.log('FAIL - Verification failed when success was expected');
       } else {
-        console.log(' WARNING - Score outside expected range', `[${min}-${max}]`);
+        console.log('WARNING - Score outside expected range', `[${min}-${max}]`);
       }
       
     } catch (error) {
-      console.error('Error:', error.message);
+      console.error(' Error:', error.message);
+      console.error(error.stack);
     }
 
     console.log('');
