@@ -14,11 +14,17 @@ export const NavBar = () => {
     { path: '/', label: 'Home' },
     { path: '/marketplace', label: 'Marketplace' },
     { path: '/business', label: 'Business' },
-    { path: '/portfolio', label: 'Portfolio' },
+    { path: '/investor', label: 'Investor' },
+    { path: '/pay', label: 'Pay Invoice' },
     { path: '/analytics', label: 'Analytics' },
   ];
 
-  const isActive = (path) => location.pathname === path;
+  const isActive = (path) => {
+    if (path === '/') {
+      return location.pathname === '/';
+    }
+    return location.pathname.startsWith(path);
+  }
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 glass border-b border-white/10">
