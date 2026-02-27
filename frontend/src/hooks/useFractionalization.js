@@ -1,23 +1,39 @@
 import { useState } from 'react';
-import { Contract, parseEther, formatEther } from 'ethers';
+import { Contract, parseEther, formatEther, JsonRpcProvider } from 'ethers';
 import { useWeb3 } from '@/contexts/Web3Context';
 import { CONTRACTS } from '@/constants/addresses';
 import { FRACTIONALIZATION_ABI } from '@/constants/abis';
 import toast from 'react-hot-toast';
 
 export const useFractionalization = () => {
-  const { signer } = useWeb3();
+  const { signer, provider } = useWeb3();
   const [loading, setLoading] = useState(false);
 
-  const getContract = () => {
+  const getProvider = () => {
+    if (provider) return provider;
+
+    return new JsonRpcProvider(
+      import.meta.env.VITE_SEPOLIA_RPC_URL
+    );
+  }
+
+  const getContract = (withSigner = true) => {
+    if (!withSigner) {
+      const readProvider = getProvider();
+      return new Contract(
+        CONTRACTS.FRACTIONALIZATION_POOL, FRACTIONALIZATION_ABI, readProvider
+      );
+    }
+
     if (!signer) throw new Error('No signer available');
-    return new Contract(CONTRACTS.FRACTIONALIZATION_POOL, FRACTIONALIZATION_ABI, signer);
+
+    return new Contract(CONTRACTS.FRACTIONALIZATION_POOL, FRACTIONALIZATION_ABI, withSigner ? signer : provider);
   };
 
   const fractionalizeInvoice = async (invoiceTokenId, totalFractions, pricePerFraction) => {
     try {
       setLoading(true);
-      const contract = getContract();
+      const contract = getContract(true);
       
       const tx = await contract.fractionalizeInvoice(
         invoiceTokenId,
@@ -53,7 +69,7 @@ export const useFractionalization = () => {
   const buyFractions = async (fractionId, amount, pricePerFraction) => {
     try {
       setLoading(true);
-      const contract = getContract();
+      const contract = getContract(true);
       
       const cost = parseEther((amount * pricePerFraction).toString());
       
@@ -73,10 +89,13 @@ export const useFractionalization = () => {
   const withdrawProceeds = async () => {
     try {
       setLoading(true);
-      const contract = getContract();
+      const contract = getContract(true);
+
+      toast.loading('Withdrawing proceeds...', { id: 'withdraw' });
       const tx = await contract.withdrawProceeds();
       await tx.wait();
-      toast.success('Proceeds withdrawn successfully!');
+      toast.success('Proceeds withdrawn successfully!', { id: 'withdraw' });
+      
     } catch (error) {
       console.error('Error withdrawing proceeds:', error);
       toast.error(error.reason || 'Failed to withdraw proceeds');
@@ -88,14 +107,14 @@ export const useFractionalization = () => {
 
   const getFractionInfo = async (fractionId) => {
     try {
-      const contract = getContract();
+      const contract = getContract(false);
       const info = await contract.getFractionInfo(fractionId);
       
       return {
         invoiceTokenId: Number(info[0]),
         totalFractions: Number(info[1]),
         fractionsSold: Number(info[2]),
-        pricePerFraction: formatEther(info[3]),
+        pricePerFraction: info[3],
         issuer: info[4],
         isActive: info[5],
       };
@@ -107,7 +126,7 @@ export const useFractionalization = () => {
 
   const getPendingWithdrawals = async (address) => {
     try {
-      const contract = getContract();
+      const contract = getContract(false);
       const amount = await contract.pendingWithdrawals(address);
       return formatEther(amount);
     } catch (error) {
