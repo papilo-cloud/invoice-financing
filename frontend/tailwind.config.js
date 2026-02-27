@@ -6,6 +6,16 @@ export default {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        sans: ['Syne', 'sans-serif'],
+        mono: ['IBM Plex Mono', 'monospace'],
+      },
+      fontWeight: {
+        normal: '400',
+        semibold: '600',
+        bold: '700',
+        extrabold: '800',
+      },
       colors: {
         // Binance-inspired color palette
         primary: {
