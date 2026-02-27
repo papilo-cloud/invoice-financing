@@ -1,23 +1,40 @@
 import { useState } from 'react';
-import { Contract, parseEther } from 'ethers';
+import { Contract, JsonRpcProvider, parseEther } from 'ethers';
 import { useWeb3 } from '@/contexts/Web3Context';
 import { CONTRACTS } from '@/constants/addresses';
 import { INVOICE_NFT_ABI } from '@/constants/abis';
 import toast from 'react-hot-toast';
 
 export const useInvoiceNFT = () => {
-  const { signer, account } = useWeb3();
+  const { signer, provider, account } = useWeb3();
   const [loading, setLoading] = useState(false);
 
-  const getContract = () => {
-    if (!signer) throw new Error('No signer available');
-    return new Contract(CONTRACTS.INVOICE_NFT, INVOICE_NFT_ABI, signer);
+  const getProvider = () => {
+    if (provider) return provider;
+
+    return new JsonRpcProvider(
+      import.meta.env.VITE_SEPOLIA_RPC_URL
+    );
+  }
+
+  const getContract = (withSigner = true) => {
+
+    if (!withSigner) {
+      const readProvider = getProvider();
+      return new Contract(CONTRACTS.INVOICE_NFT, INVOICE_NFT_ABI, readProvider);
+    }
+
+    if (!signer) {
+      throw new Error('No signer available');
+    }
+
+    return new Contract(CONTRACTS.INVOICE_NFT, INVOICE_NFT_ABI, withSigner ? signer : provider);
   };
 
   const createInvoice = async (debtorName, faceValue, dueDate) => {
     try {
       setLoading(true);
-      const contract = getContract();
+      const contract = getContract(true);
       
       const tx = await contract.createInvoice(
         debtorName,
@@ -53,7 +70,7 @@ export const useInvoiceNFT = () => {
 
   const getInvoice = async (tokenId) => {
     try {
-      const contract = getContract();
+      const contract = getContract(false);
       const invoice = await contract.getInvoice(tokenId);
       
       return {
@@ -75,7 +92,7 @@ export const useInvoiceNFT = () => {
   const approveNFT = async (tokenId, spender) => {
     try {
       setLoading(true);
-      const contract = getContract();
+      const contract = getContract(true);
       const tx = await contract.approve(spender, tokenId);
       await tx.wait();
       toast.success('NFT approved!');
@@ -90,10 +107,20 @@ export const useInvoiceNFT = () => {
 
   const getTokenURI = async (tokenId) => {
     try {
-      const contract = getContract();
+      const contract = getContract(false);
       return await contract.tokenURI(tokenId);
     } catch (error) {
       console.error('Error getting token URI:', error);
+      throw error;
+    }
+  };
+
+  const isVerified = async (tokenId) => {
+    try {
+      const contract = getContract(false);
+      return await contract.isVerified(tokenId);
+    } catch (error) {
+      console.error('Error checking verification status:', error);
       throw error;
     }
   };
@@ -103,6 +130,7 @@ export const useInvoiceNFT = () => {
     getInvoice,
     approveNFT,
     getTokenURI,
+    isVerified,
     loading,
   };
 };
