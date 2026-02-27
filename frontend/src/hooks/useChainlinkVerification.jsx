@@ -8,44 +8,29 @@ import { VerificationToast } from '@/components/common/VerificationToast';
 import toast from 'react-hot-toast';
 
 export const useChainlinkVerification = () => {
-  const { signer, provider } = useWeb3();
+  const { signer, provider, account } = useWeb3();
   const [loading, setLoading] = useState(false);
   const [pendingRequests, setPendingRequests] = useState(new Map());
 
   const getContract = (withSigner = true) => {
+    if (withSigner && !signer) throw new Error('No signer available');
+
+    if (!withSigner && provider) {
+      return new Contract(
+        CONTRACTS.INVOICE_VERIFIER,
+        VERIFIER_ABI,
+        provider
+      );
+    }
+
     if (!provider) throw new Error('No provider available');
+
     return new Contract(
       CONTRACTS.INVOICE_VERIFIER,
       VERIFIER_ABI,
-      withSigner && signer ? signer : provider
+      withSigner ? signer : provider
     );
   };
-
-  useEffect(() => {
-    const cleanup = onVerificationFulfilled(tokenId, (data) => {
-        if (data.success) {
-            toast.custom(
-                (t) => (
-                <motion.div
-                    initial={{ opacity: 0, y: 50 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0 }}
-                    className="glass rounded-xl p-4 border border-green-500/30"
-                >
-                    <VerificationToast 
-                    status="success" 
-                    riskScore={data.riskScore}
-                    invoiceId={tokenId}
-                    />
-                </motion.div>
-                ),
-                { duration: 5000 }
-            );
-        }
-    });
-
-  return cleanup;
-}, [tokenId]);
 
   // Request Chainlink verification for an invoice
   const requestVerification = async (invoiceId) => {
@@ -114,37 +99,6 @@ export const useChainlinkVerification = () => {
     }
   };
 
-  // Listen for verification fulfillment
-  const onVerificationFulfilled = (invoiceId, callback) => {
-    if (!provider) return;
-
-    const contract = getContract(false);
-    const filter = contract.filters.VerificationFulfilled(invoiceId);
-
-    const listener = (invoiceIdEvent, riskScore, success) => {
-      // Remove from pending
-      setPendingRequests(prev => {
-        const updated = new Map(prev);
-        updated.delete(Number(invoiceIdEvent));
-        return updated;
-      });
-
-      callback({
-        invoiceId: Number(invoiceIdEvent),
-        riskScore: Number(riskScore),
-        success,
-      });
-    };
-
-    contract.on(filter, listener);
-
-    // Return cleanup function
-    return () => {
-      contract.off(filter, listener);
-    };
-  };
-
-  // Check if verification is pending
   const isVerificationPending = (invoiceId) => {
     return pendingRequests.has(invoiceId);
   };
@@ -157,9 +111,41 @@ export const useChainlinkVerification = () => {
   return {
     requestVerification,
     manualVerify,
-    onVerificationFulfilled,
     isVerificationPending,
     getPendingRequest,
     loading,
   };
 };
+
+
+export const useVerificationEvents = (invoiceId, onFulfilled) => {
+  const { provider } = useWeb3();
+
+  useEffect(() => {
+    if (!invoiceId || !provider) return;
+
+    const contract = new Contract(
+      CONTRACTS.INVOICE_VERIFIER,
+      VERIFIER_ABI,
+      provider
+    );
+
+    const filter = contract.filters.VerificationFulfilled(invoiceId);
+
+    const listener = (invoiceIdEvent, riskScore, success) => {
+      if (onFulfilled) {
+        onFulfilled({
+          invoiceId: Number(invoiceIdEvent),
+          riskScore: Number(riskScore),
+          success,
+        });
+      }
+    };
+
+    contract.on(filter, listener);
+
+    return () => {
+      contract.off(filter, listener);
+    };
+  }, [invoiceId, provider, onFulfilled]);
+}
