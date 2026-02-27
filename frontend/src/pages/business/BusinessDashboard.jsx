@@ -1,10 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
 import { Plus, FileText, Wallet, TrendingUp, Eye } from 'lucide-react';
 import { Card } from '@/components/common/Card';
 import { Button } from '@/components/common/Button';
 import { Spinner } from '@/components/common/Spinner';
-import { InvoiceCard } from '@/components/invoice/InvoiceCard';
 import { useWeb3 } from '@/contexts/Web3Context';
 import { useFractionalization } from '@/hooks/useFractionalization';
 import { formatEther, formatDate } from '@/utils/format';
@@ -132,10 +130,9 @@ export const BusinessDashboard = () => {
   return (
     <div className="min-h-screen pt-24 pb-12 px-4">
       <div className="max-w-7xl mx-auto">
-        {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-4xl font-extrabold mb-2">Business Dashboard</h1>
+            <h1 className="text-4xl font-bold mb-2">Business Dashboard</h1>
             <p className="text-gray-400">Manage your invoices and track proceeds</p>
           </div>
           <Button onClick={() => navigate('/business/submit')}>
@@ -150,8 +147,8 @@ export const BusinessDashboard = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-gray-400 text-sm mb-1">Pending Proceeds</p>
-                <p className="text-3xl font-extrabold text-primary-500">
-                  {parseFloat(formatEther(stats.pendingProceeds)).toFixed(4)} ETH
+                <p className="text-3xl font-bold text-primary-500">
+                  {formatEther(stats.pendingProceeds)} ETH
                 </p>
               </div>
               <Wallet className="w-12 h-12 text-primary-500 opacity-50" />
@@ -162,7 +159,7 @@ export const BusinessDashboard = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-gray-400 text-sm mb-1">Active Invoices</p>
-                <p className="text-3xl font-extrabold">{invoices.length}</p>
+                <p className="text-3xl font-bold">{invoices.length}</p>
               </div>
               <FileText className="w-12 h-12 text-white opacity-50" />
             </div>
@@ -172,7 +169,7 @@ export const BusinessDashboard = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-gray-400 text-sm mb-1">Total Raised</p>
-                <p className="text-3xl font-extrabold text-green-400">0 ETH</p>
+                <p className="text-3xl font-bold text-green-400">0 ETH</p>
               </div>
               <TrendingUp className="w-12 h-12 text-green-400 opacity-50" />
             </div>
@@ -182,7 +179,7 @@ export const BusinessDashboard = () => {
         {/* Invoices Section */}
         <Card>
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-extrabold">Your Invoices</h2>
+            <h2 className="text-2xl font-bold">Your Invoices</h2>
             {invoices.length > 0 && (
               <Button 
                 variant="secondary" 
@@ -243,7 +240,7 @@ export const BusinessDashboard = () => {
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-400">Amount</span>
                       <span className="font-semibold text-primary-500">
-                        {parseFloat(formatEther(invoice.faceValue)).toFixed(4)} ETH
+                        {formatEther(invoice.faceValue)} ETH
                       </span>
                     </div>
                     <div className="flex justify-between text-sm">
@@ -273,14 +270,14 @@ export const BusinessDashboard = () => {
         </Card>
 
         {/* Withdraw Proceeds */}
-        {1 > 0 && (
+        {formatEther(stats.pendingProceeds) > 0 && (
           <Card className="mt-6">
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-xl font-bold mb-2">Pending Proceeds</h3>
                 <p className="text-gray-400">
                   You have <span className='text-primary-500 font-bold'>
-                    {parseFloat(formatEther(stats.pendingProceeds)).toFixed(4)} ETH   
+                    {formatEther(stats.pendingProceeds)} ETH   
                   </span> ready to withdraw
                 </p>
               </div>
