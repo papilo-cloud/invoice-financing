@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
+pragma solidity ^0.8.24;
 
 import {Script, console} from "forge-std/Script.sol";
 import {InvoiceNFT} from "../src/InvoiceNFT.sol";
@@ -79,9 +79,7 @@ contract DeployScript is Script {
                 "VITE_PAYMENT_DISTRIBUTOR_ADDRESS=", vm.toString(address(distributor)), "\n"
             )
         );
-        
-        vm.writeFile(".env.deployment", addresses);
-        console.log("\nAddresses saved to .env.deployment");
 
+        console.log(addresses);
     }
 }
