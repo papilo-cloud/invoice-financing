@@ -1,41 +1,18 @@
 import { useState, useEffect } from 'react';
-import { Wallet, TrendingUp, DollarSign, Clock } from 'lucide-react';
+import { Wallet, TrendingUp, DollarSign, Package, RefreshCcw } from 'lucide-react';
 import { Card } from '@/components/common/Card';
 import { Button } from '@/components/common/Button';
 import { Spinner } from '@/components/common/Spinner';
 import { useWeb3 } from '@/contexts/Web3Context';
 import { useDistributor } from '@/hooks/useDistributor';
-import { useFractionalization } from '@/hooks/useFractionalization';
-import { formatEther } from '@/utils/format';
+import { formatEther, formatDate } from '@/utils/format';
+import { usePortfolio } from '../../hooks/usePortfolio';
 
 export const Portfolio = () => {
   const { account, isConnected } = useWeb3();
+  const { portfolio, stats, loading, refreshPortfolio } = usePortfolio();
   const { getClaimable, claimPayout, loading: claiming } = useDistributor();
-  const [holdings, setHoldings] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [totalValue, setTotalValue] = useState('0');
-  const [claimableAmount, setClaimableAmount] = useState('0');
 
-  useEffect(() => {
-    if (account) {
-      loadPortfolio();
-    }
-  }, [account]);
-
-  const loadPortfolio = async () => {
-    try {
-      setLoading(true);
-      // In production, we'll query events or use a subgraph
-      // For demo purposes, showing empty state
-      setHoldings([]);
-      setTotalValue('0');
-      setClaimableAmount('0');
-    } catch (error) {
-      console.error('Error loading portfolio:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   if (!isConnected) {
     return (
@@ -51,96 +28,182 @@ export const Portfolio = () => {
     );
   }
 
+  if (loading) {
+    return (
+      <div className="min-h-screen pt-24 px-4 flex items-center justify-center">
+        <Spinner size="xl" />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen pt-24 pb-12 px-4">
       <div className="max-w-7xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold mb-2">Portfolio</h1>
-          <p className="text-gray-400">Track your investments and claim returns</p>
+        <div className="mb-8 flex items-center justify-between">
+          <div>
+            <h1 className="text-4xl font-bold mb-2">Portfolio</h1>
+            <p className="text-gray-400">Track your investments and claim returns</p>
+          </div>
+          <Button variant="outline" size="sm" onClick={refreshPortfolio}>
+            <RefreshCcw className="w-4 h-4 mr-2" />
+            Refresh
+          </Button>
         </div>
 
         {/* Stats */}
-        <div className="grid md:grid-cols-3 gap-6 mb-8">
+        <div className="grid md:grid-cols-4 gap-6 mb-8">
           <Card>
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-gray-400 mb-1">Total Invested</p>
                 <p className="text-3xl font-bold text-primary-400">
-                  {totalValue} ETH
+                  {formatEther(stats.totalInvested)} ETH
                 </p>
               </div>
               <Wallet className="w-12 h-12 text-primary-400 opacity-50" />
             </div>
           </Card>
 
-          <Card>
+          <Card hover>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-400 mb-1">Current Value</p>
+                <p className="text-3xl font-bold">
+                  {formatEther(stats.totalValue)} ETH
+                </p>
+              </div>
+              <TrendingUp className="w-12 h-12 text-white opacity-50" />
+            </div>
+          </Card>
+
+          <Card hover>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-400 text-sm mb-1">Fractions Owned</p>
+                <p className="text-3xl font-bold">{stats.fractionsOwned}</p>
+              </div>
+              <Package className="w-12 h-12 text-white opacity-50" />
+            </div>
+          </Card>
+
+          <Card hover>
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-gray-400 mb-1">Claimable</p>
                 <p className="text-3xl font-bold text-green-400">
-                  {claimableAmount} ETH
+                  {formatEther(stats.claimable)} ETH
                 </p>
               </div>
               <DollarSign className="w-12 h-12 text-green-400 opacity-50" />
             </div>
-            {parseFloat(claimableAmount) > 0 && (
-              <Button className="w-full mt-4" loading={claiming}>
+            {parseFloat(stats.claimable) > 0 && (
+              <Button className="w-full mt-4" size="sm" loading={claiming}>
                 Claim All
               </Button>
             )}
           </Card>
-
-          <Card>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-gray-400 mb-1">Active Positions</p>
-                <p className="text-3xl font-bold">{holdings.length}</p>
-              </div>
-              <TrendingUp className="w-12 h-12 text-accent-400 opacity-50" />
-            </div>
-          </Card>
         </div>
 
-        {/* Holdings */}
-        {loading ? (
-          <div className="flex items-center justify-center py-20">
-            <Spinner size="xl" />
+        <Card>
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-2xl font-bold">Your Investments</h2>
+            <p className="text-gray-400">
+              {portfolio.length} {portfolio.length === 1 ? 'position' : 'positions'}
+            </p>
           </div>
-        ) : holdings.length > 0 ? (
-          <div className="space-y-4">
-            {holdings.map((holding, index) => (
-              <Card key={index} hover>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="text-xl font-bold mb-1">
-                      Invoice #{holding.invoiceId}
-                    </h3>
-                    <p className="text-gray-400">{holding.debtorName}</p>
+
+          {portfolio.length === 0 ? (
+            <div className="text-center py-12">
+              <Package className="w-16 h-16 text-gray-600 mx-auto mb-4" />
+              <h3 className="text-xl font-bold mb-2 text-gray-400">
+                No Investments Yet
+              </h3>
+              <p className="text-gray-500 mb-6">
+                Start investing in verified invoices to earn returns
+              </p>
+              <Button onClick={() => navigate('/marketplace')}>
+                Explore Marketplace
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {portfolio.map((item) => (
+                <div
+                  key={item.fractionId}
+                  className="glass p-6 rounded-xl border border-gray-700 hover:border-primary-500/50 transition-all cursor-pointer"
+                  onClick={() => navigate(`/marketplace/${item.fractionId}`)}
+                >
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        <span className="text-sm font-mono text-gray-400">
+                          Fraction #{item.fractionId}
+                        </span>
+                        {item.invoice.isPaid ? (
+                          <span className="px-3 py-1 rounded-full bg-green-500/20 text-green-400 text-xs font-semibold border border-green-500/30">
+                            Paid
+                          </span>
+                        ) : (
+                          <span className="px-3 py-1 rounded-full bg-blue-500/20 text-blue-400 text-xs font-semibold border border-blue-500/30">
+                            Active
+                          </span>
+                        )}
+                      </div>
+                      <h3 className="text-xl font-bold mb-1">
+                        {item.invoice.debtorName}
+                      </h3>
+                      <p className="text-sm text-gray-400">
+                        Invoice #{item.fractionInfo.invoiceTokenId}
+                      </p>
+                    </div>
+
+
                   </div>
-                  <div className="text-right">
-                    <p className="text-2xl font-bold text-primary-400">
-                      {holding.fractions} fractions
-                    </p>
-                    <p className="text-sm text-gray-400">
-                      {holding.value} ETH invested
-                    </p>
+
+                  {/* Stats Grid */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                    <div>
+                      <p className="text-gray-400 text-sm">Your Fractions</p>
+                      <p className="font-bold text-lg">{item.balance}</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-400 text-sm">Invested</p>
+                      <p className="font-bold text-primary-500">
+                        {formatEther(item.invested)} ETH
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-gray-400 text-sm">Invoice Value</p>
+                      <p className="font-bold">
+                        {formatEther(item.invoice.faceValue)} ETH
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-gray-400 text-sm">Due Date</p>
+                      <p className="font-bold">
+                        {formatDate(item.invoice.dueDate)}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Progress Bar */}
+                  <div>
+                    <div className="flex justify-between text-xs text-gray-400 mb-2">
+                      <span>Your Ownership</span>
+                      <span>{item.ownership.toFixed(2)}%</span>
+                    </div>
+                    <div className="h-2 bg-dark-700 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-primary-500 rounded-full transition-all"
+                        style={{ width: `${item.ownership}%` }}
+                      />
+                    </div>
                   </div>
                 </div>
-              </Card>
-            ))}
-          </div>
-        ) : (
-          <Card className="text-center py-12">
-            <Wallet className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-            <h3 className="text-xl font-bold mb-2">No Investments Yet</h3>
-            <p className="text-gray-400 mb-6">
-              Start investing in verified invoices to build your portfolio
-            </p>
-            <Button onClick={() => window.location.href = '/marketplace'}>
-              Explore Marketplace
-            </Button>
-          </Card>
-        )}
+              ))}
+            </div>
+          )}
+        </Card>
       </div>
     </div>
   );
