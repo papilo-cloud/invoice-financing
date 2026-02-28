@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Wallet, TrendingUp, DollarSign, Package, RefreshCcw } from 'lucide-react';
+import { Wallet, TrendingUp, DollarSign, Package, RefreshCcw, Download } from 'lucide-react';
 import { Card } from '@/components/common/Card';
 import { Button } from '@/components/common/Button';
 import { Spinner } from '@/components/common/Spinner';
@@ -7,11 +7,24 @@ import { useWeb3 } from '@/contexts/Web3Context';
 import { useDistributor } from '@/hooks/useDistributor';
 import { formatEther, formatDate } from '@/utils/format';
 import { usePortfolio } from '../../hooks/usePortfolio';
+import { useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
 
 export const Portfolio = () => {
   const { account, isConnected } = useWeb3();
   const { portfolio, stats, loading, refreshPortfolio } = usePortfolio();
-  const { getClaimable, claimPayout, loading: claiming } = useDistributor();
+  const { claimPayout, loading: claiming } = useDistributor();
+  const navigate = useNavigate();
+
+  const handleClaim = async (fractionId, invoiceTokenId) => {
+    try {
+      toast.loading('Processing claim...', invoiceTokenId);
+      await claimPayout(invoiceTokenId);
+      toast.success('Payout claimed successfully!', invoiceTokenId);
+    } catch (error) {
+      toast.error('Failed to process claim', invoiceTokenId);
+    }
+  }
 
 
   if (!isConnected) {
@@ -96,13 +109,37 @@ export const Portfolio = () => {
               </div>
               <DollarSign className="w-12 h-12 text-green-400 opacity-50" />
             </div>
-            {parseFloat(stats.claimable) > 0 && (
-              <Button className="w-full mt-4" size="sm" loading={claiming}>
-                Claim All
-              </Button>
-            )}
           </Card>
         </div>
+
+        {formatEther(stats.claimable) > 0 && (
+          <Card className="mb-6 border-2 border-green-500/30 bg-green-500/10">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-xl font-bold text-green-400 mb-2">
+                  You have returns ready to claim!
+                </h3>
+                <p className="text-gray-400">
+                  Total claimable: <span className="text-green-400 font-bold">
+                    {formatEther(stats.claimable)} ETH
+                  </span>
+                </p>
+              </div>
+              <Button 
+                onClick={() => {
+                  portfolio
+                    .filter(item => item.invoice.isPaid)
+                    .forEach(item => handleClaim(item.fractionInfo.invoiceTokenId, item.fractionId));
+                }}
+                loading={claiming}
+                className="whitespace-nowrap"
+              >
+                <Download className="w-5 h-5" />
+                Claim All Returns
+              </Button>
+            </div>
+          </Card>
+        )}
 
         <Card>
           <div className="flex items-center justify-between mb-6">
@@ -157,7 +194,20 @@ export const Portfolio = () => {
                       </p>
                     </div>
 
-
+                    {item.invoice.isPaid && (
+                      <Button 
+                        size="sm" 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleClaim(item.fractionId, item.fractionInfo.invoiceTokenId);
+                          }}
+                        loading={claiming}
+                        className="whitespace-nowrap"
+                      >
+                        <Download className="w-4 h-4 mr-1" />
+                        Claim Returns
+                      </Button>
+                    )}
                   </div>
 
                   {/* Stats Grid */}
@@ -179,9 +229,11 @@ export const Portfolio = () => {
                       </p>
                     </div>
                     <div>
-                      <p className="text-gray-400 text-sm">Due Date</p>
-                      <p className="font-bold">
-                        {formatDate(item.invoice.dueDate)}
+                      <p className="text-gray-400 text-sm">
+                        {item.invoice.isPaid ? 'Your Return' : 'Due Date'}
+                      </p>
+                      <p className={`font-bold ${item.invoice.isPaid ? 'text-green-400' : ''}`}>
+                        {item.invoice.isPaid ? formatEther(item.invoice.returnAmount) + ' ETH' : formatDate(item.invoice.dueDate)}
                       </p>
                     </div>
                   </div>
