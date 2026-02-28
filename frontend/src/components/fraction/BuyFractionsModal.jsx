@@ -8,8 +8,22 @@ export const BuyFractionsModal = ({ isOpen, onClose, fraction, onBuy, loading })
   const [amount, setAmount] = useState(1);
   
   const available = fraction.totalFractions - fraction.fractionsSold;
-  const pricePerFraction = parseFloat(formatEther(fraction.pricePerFraction));
-  const totalCost = amount * pricePerFraction;
+
+  const calculateTotalCost = () => {
+    if (!fraction || !fraction.pricePerFraction) return '0';
+
+    try {
+      const price = BigInt(fraction.pricePerFraction);
+      const qty = BigInt(amount);
+      const total = price * qty;
+      return formatEther(total);
+    } catch (error) {
+      console.error('Error calculating total cost:', error);
+      return '0';
+    }
+  }
+
+  const totalCost = calculateTotalCost();
 
   const handleAmountChange = (delta) => {
     const newAmount = amount + delta;
@@ -19,13 +33,12 @@ export const BuyFractionsModal = ({ isOpen, onClose, fraction, onBuy, loading })
   };
 
   const handleSubmit = () => {
-    onBuy(fraction.fractionId, amount, pricePerFraction);
+    onBuy(fraction.fractionId, amount, formatEther(fraction.pricePerFraction));
   };
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Buy Fractions" size="md">
       <div className="space-y-6">
-        {/* Fraction Info */}
         <div className="glass p-4 rounded-xl">
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -34,7 +47,7 @@ export const BuyFractionsModal = ({ isOpen, onClose, fraction, onBuy, loading })
             </div>
             <div>
               <p className="text-sm text-gray-400 mb-1">Price per Fraction</p>
-              <p className="font-semibold">{pricePerFraction} ETH</p>
+              <p className="font-semibold">{formatEther(fraction.pricePerFraction)} ETH</p>
             </div>
             <div>
               <p className="text-sm text-gray-400 mb-1">Available</p>
@@ -105,10 +118,10 @@ export const BuyFractionsModal = ({ isOpen, onClose, fraction, onBuy, loading })
             <span className="text-gray-400">Total Cost</span>
             <div className="text-right">
               <p className="text-3xl font-bold text-primary-400">
-                {totalCost.toFixed(4)} ETH
+                {totalCost} ETH
               </p>
               <p className="text-sm text-gray-400 mt-1">
-                {amount} × {pricePerFraction} ETH
+                {amount} × {(formatEther(fraction.pricePerFraction))} ETH
               </p>
             </div>
           </div>

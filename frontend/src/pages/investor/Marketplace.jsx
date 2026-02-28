@@ -6,6 +6,7 @@ import { FractionCard } from '@/components/fraction/FractionCard';
 import { BuyFractionsModal } from '@/components/fraction/BuyFractionsModal';
 import { useFractionalization } from '@/hooks/useFractionalization';
 import { useInvoiceNFT } from '@/hooks/useInvoiceNFT';
+import { formatEther } from 'ethers';
 
 export const Marketplace = () => {
   const [fractions, setFractions] = useState([]);
@@ -114,7 +115,7 @@ export const Marketplace = () => {
                 <p className="text-gray-400 mb-1">Total Volume</p>
                 <p className="text-3xl font-bold text-accent-400">
                   {fractions.reduce((acc, f) => 
-                    acc + (parseFloat(f.pricePerFraction) * f.totalFractions), 0
+                    acc + (parseFloat(formatEther(f.pricePerFraction)) * f.totalFractions), 0
                   ).toFixed(2)} ETH
                 </p>
               </div>
