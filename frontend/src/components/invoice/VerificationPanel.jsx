@@ -2,42 +2,42 @@ import { useState, useEffect } from 'react';
 import { Shield, Loader2, CheckCircle, AlertCircle, Clock } from 'lucide-react';
 import { Card } from '@/components/common/Card';
 import { Button } from '@/components/common/Button';
-import { useChainlinkVerification } from '@/hooks/useChainlinkVerification';
+import { useChainlinkVerification, useVerificationEvents } from '@/hooks/useChainlinkVerification';
 import { useInvoiceNFT } from '@/hooks/useInvoiceNFT';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 
 export const VerificationPanel = ({ invoice, tokenId, onVerified }) => {
-  const { requestVerification, manualVerify, onVerificationFulfilled, isVerificationPending, loading } = useChainlinkVerification();
+  const { requestVerification, manualVerify, isVerificationPending, loading } = useChainlinkVerification();
   const { getInvoice } = useInvoiceNFT();
   const [isPending, setIsPending] = useState(false);
   const [showOptions, setShowOptions] = useState(false);
 
   useEffect(() => {
-    setIsPending(isVerificationPending(tokenId));
+    if(tokenId !== undefined) {
+      setIsPending(isVerificationPending(tokenId));
+    }
   }, [tokenId, isVerificationPending]);
 
-  useEffect(() => {
-    const cleanup = onVerificationFulfilled(tokenId, (data) => {
-      console.log('Verification fulfilled:', data);
-      setIsPending(false);
-      
-      if (data.success) {
-        toast.success(
-          `Invoice verified! Risk Score: ${data.riskScore}/100`,
-          { duration: 5000 }
-        );
-        
-        if (onVerified) {
-          onVerified(data);
-        }
-      } else {
-        toast.error('Verification failed. Please try again.');
-      }
-    });
 
-    return cleanup;
-  }, [tokenId, onVerificationFulfilled, onVerified]);
+  useVerificationEvents(tokenId, (data) => {
+    console.log('Verification event received:', data);
+    setIsPending(false);
+    
+    if (data.success) {
+      toast.success(
+        `Invoice verified! Risk Score: ${data.riskScore}/100`,
+        { duration: 5000 }
+      );
+      
+      // Refresh invoice data
+      if (onVerified) {
+        onVerified(data);
+      }
+    } else {
+      toast.error('Verification failed. Please try again.');
+    }
+  });
 
   const handleChainlinkVerify = async () => {
     try {
