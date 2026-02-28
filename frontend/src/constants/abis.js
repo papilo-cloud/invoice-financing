@@ -8,6 +8,7 @@ export const INVOICE_NFT_ABI = [
   "function isVerified(uint256 tokenId) external view returns (bool)",
   "function verifier() external view returns (address)",
   "function paymentDistributor() external view returns (address)",
+  "function getInvoice(uint256 tokenId) view returns (tuple(address issuer, string debtorName, uint256 faceValue, uint256 dueDate, uint256 riskScore, bool isPaid, bool isVerified, uint256 createdAt))",
   
   // Write Functions
   "function createInvoice(string debtorName, uint256 faceValue, uint256 dueDate) external returns (uint256)",
@@ -52,6 +53,7 @@ export const FRACTIONALIZATION_ABI = [
   "function nextFractionId() external view returns (uint256)",
   "function pendingProceeds(address) external view returns (uint256)",
   "function buyoutInfo(uint256) external view returns (address buyer, uint256 buyoutPrice, uint256 deadline, bool isActive)",
+  "function getFractionInfo(uint256) external view returns (uint256 invoiceTokenId,uint256 totalFractions,uint256 fractionsSold,uint256 pricePerFraction,address issuer, bool isActive)",
   
   // Write Functions
   "function fractionalizeInvoice(uint256 invoiceTokenId, uint256 totalFractions, uint256 pricePerFraction) external returns (uint256)",
@@ -61,6 +63,7 @@ export const FRACTIONALIZATION_ABI = [
   "function claimBuyoutPayment(uint256 fractionId) external",
   "function finalizeBuyout(uint256 fractionId) external",
   "function setApprovalForAll(address operator, bool approved) external",
+  "function pendingWithdrawals(address) public view returns (uint256)",
   
   // Events
   "event InvoiceFramentalized(uint256 indexed fractionId, uint256 indexed invoiceTokenId, uint256 totalFractions, uint256 pricePerFraction)",
