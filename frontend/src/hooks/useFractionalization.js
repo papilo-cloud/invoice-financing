@@ -128,7 +128,7 @@ export const useFractionalization = () => {
     try {
       const contract = getContract(false);
       const amount = await contract.pendingWithdrawals(address);
-      return formatEther(amount);
+      return amount;
     } catch (error) {
       console.error('Error getting pending withdrawals:', error);
       throw error;
