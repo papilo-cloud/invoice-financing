@@ -125,12 +125,23 @@ export const useInvoiceNFT = () => {
     }
   };
 
+  const getAdmin = async () => {
+    try {
+      const contract = getContract(false);
+      return await contract.owner();
+    } catch (error) {
+      console.error('Error getting admin:', error);
+      throw error;
+    }
+  };
+
   return {
     createInvoice,
     getInvoice,
     approveNFT,
     getTokenURI,
     isVerified,
+    getAdmin,
     loading,
   };
 };
