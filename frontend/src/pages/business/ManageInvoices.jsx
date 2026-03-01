@@ -11,13 +11,16 @@ import { useInvoiceNFT } from '@/hooks/useInvoiceNFT';
 import { useFractionalization } from '@/hooks/useFractionalization';
 import { formatEther, formatDate } from '@/utils/format';
 import { CONTRACTS } from '@/constants/addresses';
+import { RedeemPanel } from '@/components/invoice/RedeemPanel';
+import { BuyoutPanel } from '@/components/invoice/BuyoutPanel';
 
 export const ManageInvoices = () => {
-  const { tokenId } = useParams();
+  const { tokenId, account, provider, signer } = useParams();
   const navigate = useNavigate();
   const { getInvoice, approveNFT } = useInvoiceNFT();
-  const { fractionalizeInvoice, loading: fractionalizing } = useFractionalization();
+  const { fractionalizeInvoice, getFractionInfo, getFractionIdByInvoice, loading: fractionalizing } = useFractionalization();
   
+  const [fractionInfo, setFractionInfo] = useState(null); 
   const [invoice, setInvoice] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showFractionalizeModal, setShowFractionalizeModal] = useState(false);
@@ -28,7 +31,28 @@ export const ManageInvoices = () => {
 
   useEffect(() => {
     loadInvoice();
+    loadFractionInfo();
   }, [tokenId]);
+
+  const loadFractionInfo = async () => {
+    try {
+      const fractionId = await getFractionIdByInvoice(parseInt(tokenId));
+
+      if (fractionId === 0) {
+        setFractionInfo(null);
+        return;
+      }
+
+      const info = await getFractionInfo(fractionId);
+      setFractionInfo({
+        fractionId: Number(fractionId),
+        ...info,
+      });
+    } catch (error) {
+      console.error('Error loading fraction info:', error);
+      setFractionInfo(null);
+    }
+  };
 
   const loadInvoice = async () => {
     try {
@@ -50,7 +74,6 @@ export const ManageInvoices = () => {
 
   const handleVerified = async (data) => {
     console.log('Invoice verified:', data);
-    // Reload invoice to show updated status
     await loadInvoice();
   };
 
@@ -96,7 +119,6 @@ export const ManageInvoices = () => {
   return (
     <div className="min-h-screen pt-24 pb-12 px-4">
       <div className="max-w-6xl mx-auto">
-        {/* Back Button */}
         <button
           onClick={() => navigate('/business')}
           className="inline-flex items-center gap-2 text-gray-400 hover:text-white mb-8 transition-colors"
@@ -131,7 +153,6 @@ export const ManageInvoices = () => {
                 )}
               </div>
 
-              {/* Details Grid */}
               <div className="space-y-4">
                 <div className="glass p-4 rounded-xl">
                   <p className="text-sm text-gray-400 mb-1">Debtor</p>
@@ -185,6 +206,25 @@ export const ManageInvoices = () => {
               invoice={invoice} 
               tokenId={parseInt(tokenId)}
               onVerified={handleVerified}
+            />
+
+            {/* Buyout Panel - Show if fractionalized */}
+            {fractionInfo && (
+              <BuyoutPanel
+                fractionId={parseInt(tokenId)}
+                isOwner={invoice.issuer}
+                fractionInfo={fractionInfo}
+                onBuyoutAction={loadFractionInfo}
+              />
+            )}
+
+            {/* Redeem Panel - Show if paid */}
+            <RedeemPanel
+              tokenId={parseInt(tokenId)}
+              isOwner={invoice.issuer}
+              invoice={invoice}
+              fractionId={fractionInfo?.fractionId || null}
+              onRedeem={() => navigate('/business')}
             />
 
             {invoice.isVerified && !invoice.isPaid && (
