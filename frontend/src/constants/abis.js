@@ -9,6 +9,7 @@ export const INVOICE_NFT_ABI = [
   "function verifier() external view returns (address)",
   "function paymentDistributor() external view returns (address)",
   "function getInvoice(uint256 tokenId) view returns (tuple(address issuer, string debtorName, uint256 faceValue, uint256 dueDate, uint256 riskScore, bool isPaid, bool isVerified, uint256 createdAt))",
+  "function owner() external view returns (address)",
   
   // Write Functions
   "function createInvoice(string debtorName, uint256 faceValue, uint256 dueDate) external returns (uint256)",
@@ -53,7 +54,13 @@ export const FRACTIONALIZATION_ABI = [
   "function nextFractionId() external view returns (uint256)",
   "function pendingProceeds(address) external view returns (uint256)",
   "function buyoutInfo(uint256) external view returns (address buyer, uint256 buyoutPrice, uint256 deadline, bool isActive)",
+  "function buyouts(uint256 id) external view returns (tuple(address buyer, uint256 pricePerFraction, uint256 remainingFractions, uint256 escrowedAmount, bool active, bool finalized))",
   "function getFractionInfo(uint256) external view returns (uint256 invoiceTokenId,uint256 totalFractions,uint256 fractionsSold,uint256 pricePerFraction,address issuer, bool isActive)",
+  "function buyoutPremium() external view returns (uint256)",
+  "function owner() external view returns (address)",
+  "function getFractionIdByInvoice(uint256 invoiceTokenId) external view returns (uint256)",
+  "function isFractionalized(uint256 invoiceTokenId) external view returns (bool)",
+  "function platformFees() external view returns (uint256)",
   
   // Write Functions
   "function fractionalizeInvoice(uint256 invoiceTokenId, uint256 totalFractions, uint256 pricePerFraction) external returns (uint256)",
@@ -64,6 +71,10 @@ export const FRACTIONALIZATION_ABI = [
   "function finalizeBuyout(uint256 fractionId) external",
   "function setApprovalForAll(address operator, bool approved) external",
   "function pendingWithdrawals(address) public view returns (uint256)",
+  "function redeemAfterPayment(uint256 fractionId) external",
+  "function emergencyRelease(uint256 fractionId, address recipient) external",
+  "function totalSupply(uint256 fractionId) external view returns (uint256)",
+  "function withdrawPlatformFees() external",
   
   // Events
   "event InvoiceFramentalized(uint256 indexed fractionId, uint256 indexed invoiceTokenId, uint256 totalFractions, uint256 pricePerFraction)",
