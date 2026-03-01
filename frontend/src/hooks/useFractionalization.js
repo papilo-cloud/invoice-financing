@@ -8,6 +8,7 @@ import toast from 'react-hot-toast';
 export const useFractionalization = () => {
   const { signer, provider } = useWeb3();
   const [loading, setLoading] = useState(false);
+  const [buyoutTimeStamp, setBuyoutTimeStamp] = useState(null);
 
   const getProvider = () => {
     if (provider) return provider;
@@ -105,6 +106,173 @@ export const useFractionalization = () => {
     }
   };
 
+  const initiateBuyout = async (fractionId) => {
+    try {
+      setLoading(true);
+      const contract = getContract(true);
+      const totalCost = await getBuyoutPrice(fractionId);
+      
+      toast.loading('Initiating buyout...', {id: 'buyout'});
+
+      const tx = await contract.initiateBuyout(fractionId, {value: totalCost});
+      const receipt = await tx.wait();
+      const block = await tx.provider.getBlock(receipt.blockNumber);
+
+      setBuyoutTimeStamp(block.timestamp);
+
+      toast.success('Buyout initiated! Investors have 7 days to claim', {id: 'buyout'});
+    } catch (error) {
+      console.error('Error initiating buyout:', error);
+      toast.error(error.reason || 'Failed to initiate buyout', { id: 'buyout' });
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getBuyoutPrice = async (fractionId) => {
+    const contract = getContract(false);
+    const fractionInfo = await getFractionInfo(fractionId);
+
+      const buyoutPremium = await contract.buyoutPremium();
+      const circulatingSupply = await contract.totalSupply(fractionId);
+      
+      const premiumPricePerFraction = (BigInt(fractionInfo.pricePerFraction) * BigInt(buyoutPremium)) / 100n;
+
+      const totalCost = BigInt(circulatingSupply) * premiumPricePerFraction;
+      return totalCost;
+  }
+
+  const finalizeBuyout = async (fractionId) => {
+    try {
+      setLoading(true);
+      const contract = getContract(true);
+      toast.loading('Finalizing buyout...', {id: 'finalize'});
+
+      const tx = await contract.finalizeBuyout(fractionId);
+      await tx.wait();
+
+      toast.success('Buyout finalized! NFT returned.', { id: 'finalize' });
+    } catch (error) {
+      console.error('Error finalizing buyout:', error);
+      toast.error(error.reason || 'Failed to finalize buyout', { id: 'finalize' });
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const claimBuyout = async (fractionId) => {
+    try {
+      setLoading(true);
+      const contract = getContract(true);
+      toast.loading('Claiming buyout proceeds...', {id: 'claim'});
+
+      const tx = await contract.claimBuyoutPayment(fractionId);
+      await tx.wait();
+
+      toast.success('Buyout payment claimed!', { id: 'claim' });
+    } catch (error) {
+      console.error('Error claiming buyout:', error);
+      toast.error(error.reason || 'Failed to claim buyout', { id: 'claim' });
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const redeemAfterPayment = async (fractionId) => {
+    try {
+      setLoading(true);
+      const contract = getContract(true);
+
+      toast.loading('Redeeming NFT...', { id: 'redeem' });
+
+      const tx = await contract.redeemAfterPayment(fractionId);
+      await tx.wait();
+
+      toast.success('NFT redeemed successfully!', { id: 'redeem' });
+    } catch (error) {
+      console.error('Error redeeming NFT:', error);
+      toast.error(error.reason || 'Failed to redeem NFT', { id: 'redeem' });
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const emergencyRelease = async (fractionId, recipient) => {
+    try {
+      setLoading(true);
+      const contract = getContract(true);
+
+      toast.loading('Releasing NFT...', { id: 'release' });
+
+      const tx = await contract.emergencyRelease(fractionId, recipient);
+      await tx.wait();
+
+      toast.success('NFT released!', { id: 'release' });
+    } catch (error) {
+      console.error('Error releasing NFT:', error);
+      toast.error(error.reason || 'Failed to release NFT', { id: 'release' });
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const withdrawPlatformFees = async () => {
+    try {
+      setLoading(true);
+      const contract = getContract(true);
+
+      toast.loading('Withdrawing platform fees...', { id: 'withdraw-fees' });
+
+      const tx = await contract.withdrawPlatformFees();
+      await tx.wait();
+
+      toast.success('Platform fees withdrawn!', { id: 'withdraw-fees' });
+    } catch (error) {
+      console.error('Error withdrawing fees:', error);
+      toast.error(error.reason || 'Failed to withdraw fees', { id: 'withdraw-fees' });
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getFractionIdByInvoice = async (tokenId) => {
+  try {
+    const contract = getContract(false);
+
+    const fractionId = await contract.getFractionIdByInvoice(tokenId);
+    console.log(Number(fractionId))
+    return Number(fractionId);
+  } catch (error) {
+    console.error('Error getting fraction ID:', error);
+    return 0;
+  }
+};
+
+  const getBuyoutInfo = async (fractionId) => {
+    try {
+      const contract = getContract(false);
+      const info = await contract.buyouts(fractionId);
+      
+      return {
+        buyer: info[0],
+        pricePerFraction: info[1],
+        remainingFractions: Number(info[2]),
+        escrowedAmount: info[3],
+        active: info[4],
+        finalized: info[5],
+      };
+    } catch (error) {
+      console.error('Error getting buyout info:', error);
+      return null;
+    }
+  };
+
   const getFractionInfo = async (fractionId) => {
     try {
       const contract = getContract(false);
@@ -135,10 +303,32 @@ export const useFractionalization = () => {
     }
   };
 
+  const getPlatformFees = async () => {
+    try {
+      const contract = getContract(false);
+      const fees = await contract.platformFees();
+      return fees;
+    } catch (error) {
+      console.error('Error getting platform fees:', error);
+      throw error;
+    }
+  };
+
   return {
     fractionalizeInvoice,
     buyFractions,
     withdrawProceeds,
+    initiateBuyout,
+    buyoutTimeStamp,
+    finalizeBuyout,
+    claimBuyout,
+    redeemAfterPayment,
+    emergencyRelease,
+    withdrawPlatformFees,
+    getBuyoutPrice,
+    getPlatformFees,
+    getFractionIdByInvoice,
+    getBuyoutInfo,
     getFractionInfo,
     getPendingWithdrawals,
     loading,
