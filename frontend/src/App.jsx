@@ -3,7 +3,6 @@ import { Toaster } from 'react-hot-toast';
 import { Web3Provider } from './contexts/Web3Context';
 import { NavBar } from './components/common/Navbar';
 
-// Pages
 import { Home } from './pages/Home';
 import { Marketplace } from './pages/investor/Marketplace';
 import { Portfolio } from './pages/investor/Portfolio';
@@ -14,6 +13,7 @@ import { BuyoutFlow } from './pages/investor/BuyoutFlow';
 import { Analytics } from './pages/Analytics';
 import { InvestorDashboard } from './pages/investor/InvestorDashboard';
 import { PayInvoice } from './pages/debtor/PayInvoice';
+import { AdminDashboard } from './pages/admin/AdminDashboard';
 
 function App() {
   return (
@@ -24,6 +24,7 @@ function App() {
           
           <Routes>
             <Route path="/" element={<Home />} />
+            <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/investor" element={<InvestorDashboard />} />
             <Route path="/marketplace" element={<Marketplace />} />
             <Route path="/portfolio" element={<Portfolio />} />
