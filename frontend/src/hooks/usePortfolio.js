@@ -48,36 +48,29 @@ const loadPortfolio = async () => {
     let totalFractions = 0;
     let claimable = BigInt(0);
 
-    const MAX_FRACTION_ID = 100; // Adjust if you expect more
+    const MAX_FRACTION_ID = 100; // Adjust if expect more (for demo)
 
     for (let fractionId = 0; fractionId < MAX_FRACTION_ID; fractionId++) {
       try {
-        // Check if user owns any of this fraction
         const balance = await fractionContract.balanceOf(account, fractionId);
         
         if (Number(balance) > 0) {
           console.log(`Found balance for fraction ${fractionId}:`, Number(balance));
 
-          // Get fraction info
           const fractionInfo = await getFractionInfo(fractionId);
           
-          // Skip if not active
           if (!fractionInfo.isActive) continue;
 
-          // Get invoice details
           const invoice = await getInvoice(fractionInfo.invoiceTokenId);
 
-          // Calculate investment
           const invested = BigInt(fractionInfo.pricePerFraction) * BigInt(balance);
           totalInvested += invested;
           totalFractions += Number(balance);
 
-          // Calculate claimable if invoice is paid
           if (invoice.isPaid) {
             const share = (BigInt(balance) * BigInt(invoice.faceValue)) / BigInt(fractionInfo.totalFractions);
             claimable += share;
           }
-
           portfolioItems.push({
             fractionId,
             balance: Number(balance),

@@ -50,6 +50,7 @@ export const Web3Provider = ({ children }) => {
           setSigner(signer);
           setAccount(accounts[0].address);
           setChainId(Number(network.chainId));
+          console.log(account)
         }
       } catch (error) {
         console.error('Error checking connection:', error);
