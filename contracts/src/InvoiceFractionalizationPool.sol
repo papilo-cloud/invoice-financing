@@ -38,6 +38,7 @@ contract InvoiceFractionalizationPool is ERC1155Supply, Ownable, ReentrancyGuard
     error FractionsRemaining(uint256 remaining, string message);
     error BuyoutAlreadyFinalized(uint256 fractionId);
     error WithdrawFailed();
+    error InvalidAddress();
 
     InvoiceNFT public invoiceNFT;
     address public platformFeeRecipient;
@@ -60,6 +61,7 @@ contract InvoiceFractionalizationPool is ERC1155Supply, Ownable, ReentrancyGuard
         uint256 escrowedAmount;
         bool active;
         bool finalized;
+        uint256 deadline;
     }
 
     mapping(uint256 => FractionalInvoice) public fractionalInvoices; // tokenId => FractionalInvoice
@@ -353,10 +355,11 @@ contract InvoiceFractionalizationPool is ERC1155Supply, Ownable, ReentrancyGuard
         if (buyout.active) {
             revert BuyoutAlreadyActive(fractionId);
         }
-
-        uint256 premiumPricePerFraction = fr.pricePerFraction * buyoutPremium / 100;
+        
         uint256 circulatingSupply = totalSupply(fractionId);
+        uint256 premiumPricePerFraction = fr.pricePerFraction * buyoutPremium / 100;
         uint256 totalCost = circulatingSupply * premiumPricePerFraction;
+
         if (msg.value < totalCost) {
             revert InsufficientPayment(totalCost, msg.value);
         }
@@ -369,6 +372,7 @@ contract InvoiceFractionalizationPool is ERC1155Supply, Ownable, ReentrancyGuard
         buyout.escrowedAmount = totalCost;
         buyout.active = true;
         buyout.finalized = false;
+        buyout.deadline = block.timestamp + 7 days;
 
          // Refund any excess payment
         if (msg.value > totalCost) {
@@ -395,12 +399,12 @@ contract InvoiceFractionalizationPool is ERC1155Supply, Ownable, ReentrancyGuard
             revert AlreadyClaimedBuyoutPayment(fractionId, msg.sender);
         }
 
-        uint256 holderBalance = balanceOf(msg.sender, fractionId);
-        if (holderBalance == 0) {
+        uint256 holdersBalance = balanceOf(msg.sender, fractionId);
+        if (holdersBalance == 0) {
             revert InsufficientFractionsAvailable(0, 0);
         }
 
-        uint256 paymentAmount = holderBalance * buyout.pricePerFraction;
+        uint256 paymentAmount = holdersBalance * buyout.pricePerFraction;
         hasClaimedBuyout[fractionId][msg.sender] = true;
 
         if (paymentAmount > buyout.escrowedAmount) {
@@ -411,9 +415,9 @@ contract InvoiceFractionalizationPool is ERC1155Supply, Ownable, ReentrancyGuard
             revert BuyoutPaymentFailed();
         }
 
-        _burn(msg.sender, fractionId, holderBalance);
+        _burn(msg.sender, fractionId, holdersBalance);
 
-        buyout.remainingFractions -= holderBalance;
+        buyout.remainingFractions -= holdersBalance;
         buyout.escrowedAmount -= paymentAmount;
 
         (bool success, ) = payable(msg.sender).call{value: paymentAmount}("");
@@ -538,8 +542,32 @@ contract InvoiceFractionalizationPool is ERC1155Supply, Ownable, ReentrancyGuard
         _burn(holder, fractionId, amount);
     }
 
+    /**
+     * @notice Update cooldown period (owner only)
+     * @param newCooldown New cooldown period in seconds
+     */
     function updateCooldownPeriod(uint256 newCooldown) external onlyOwner {
         coolDownPeriod = newCooldown;
+    }
+
+    /**
+     * @notice Update buyout premium percentage (owner only)
+     * @param newPremium New premium in basis points (110 = 10% premium)
+     */
+    function updateBuyoutPremium(uint256 newPremium) external onlyOwner {
+        require(newPremium >= 100 && newPremium <= 200, "Premium must be between 100-200%");
+        buyoutPremium = newPremium;
+    }
+
+    /**
+     * @notice Update platform fee recipient (owner only)
+     * @param newRecipient New recipient address
+     */
+    function updatePlatformFeeRecipient(address newRecipient) external onlyOwner {
+        if (newRecipient == address(0)) {
+            revert InvalidAddress();
+        }
+        platformFeeRecipient = newRecipient;
     }
 
     function getFractionIdByInvoice(uint256 invoiceTokenId) external view returns (uint256) {
@@ -606,6 +634,86 @@ contract InvoiceFractionalizationPool is ERC1155Supply, Ownable, ReentrancyGuard
         }
 
         return (true, "Invoice is eligible for fractionalization");
+    }
+
+    function getNextFractionId() external view returns (uint256) {
+        return _fractionalTokenIdCounter;
+    }
+
+    function getBuyoutInfo(uint256 fractionId) external view returns (Buyout memory) {
+        return buyouts[fractionId];
+    }
+
+    function getBuyoutPrice(uint256 fractionId) public view returns (uint256) {
+        FractionalInvoice memory fr = fractionalInvoices[fractionId];
+
+        if (!fr.isActive) {
+            return 0;
+        }
+
+        uint256 circulatingSupply = totalSupply(fractionId);
+        if (circulatingSupply == 0) {
+            return 0;
+        }
+
+        uint256 premiumPricePerFraction = fr.pricePerFraction * buyoutPremium / 100;
+        uint256 totalCost = circulatingSupply * premiumPricePerFraction;
+        
+        return totalCost;
+    }
+
+    function hasClaimed(uint256 fractionId, address holder) external view returns (bool) {
+        return hasClaimedBuyout[invoiceToFractionId[fractionId]][holder];
+    }
+
+    function getDetailedFractionInfo(uint256 fractionId) external view 
+    returns (
+        uint256 invoiceTokenId,
+        uint256 totalFractions,
+        uint256 fractionsSold,
+        uint256 pricePerFraction,
+        address issuer,
+        bool isActive,
+        uint256 issuerProceeds
+    ) 
+    {
+        FractionalInvoice memory fr = fractionalInvoices[fractionId];
+        return (
+            fr.invoiceTokenId,
+            fr.totalFractions,
+            fr.fractionsSold,
+            fr.pricePerFraction,
+            fr.issuer,
+            fr.isActive,
+            pendingWithdrawals[fr.issuer]
+        );
+    }
+
+    function holderBalance(address holder, uint256 fractionId) external view returns (uint256) {
+        return balanceOf(holder, fractionId);
+    }
+
+    function getHolderFractions(address holder, uint256 maxFractionId) external view returns (uint256[] memory fractionIds) {
+        uint256 count = 0;
+        for (uint256 i = 1; i < maxFractionId; i++) {
+            uint256 balance = balanceOf(holder, i);
+            if (balance > 0) {
+                count++;
+            }
+        }
+
+        fractionIds = new uint256[](count);
+        uint256 index = 0;
+
+        for (uint256 i = 1; i < maxFractionId; i++) {
+            uint256 balance = balanceOf(holder, i);
+            if (balance > 0) {
+                fractionIds[index] = i;
+                index++;
+            }
+        }
+
+        return fractionIds;
     }
 
     function _update(
