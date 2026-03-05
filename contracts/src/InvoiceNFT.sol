@@ -35,7 +35,7 @@ contract InvoiceNFT is ERC721, Ownable {
 
     event InvoiceCreated(uint256 indexed tokenId, address indexed issuer, string debtorName, uint256 faceValue, uint256 dueDate);
     event InvoicePaid(uint256 indexed tokenId, address indexed payer);
-    event InvoiceVerified(uint256 indexed tokenId, uint256 riskScore);
+    event InvoiceVerified(uint256 indexed tokenId, uint256 riskScore, bool success);
     event VerifierUpdated(address indexed newVerifier);
     event DistributorUpdated(address indexed newDistributor);
 
@@ -122,7 +122,7 @@ contract InvoiceNFT is ERC721, Ownable {
         invoices[tokenId].riskScore = riskScore;
         invoices[tokenId].isVerified = true;
 
-        emit InvoiceVerified(tokenId, riskScore);
+        emit InvoiceVerified(tokenId, riskScore, true);
     }
 
     function markAsPaid(uint256 tokenId) external onlyDistributor exists(tokenId) {
@@ -138,6 +138,40 @@ contract InvoiceNFT is ERC721, Ownable {
         invoice.isPaid = true;
 
         emit InvoicePaid(tokenId, msg.sender);
+    }
+
+    function setVerificationResult(uint256 tokenId, uint256 riskScore, bool success) external onlyVerifier exists(tokenId) {
+        if (riskScore > 100) {
+            revert InvalidRiskScore(riskScore);
+        }
+
+        invoices[tokenId].riskScore = riskScore;
+        invoices[tokenId].isVerified = success;
+
+        emit InvoiceVerified(tokenId, riskScore, success);
+    }
+
+    /**
+    * @notice Returns an array of invoice token IDs owned by a specific address.
+    * @param owner The address to query for owned invoices.
+    * @return tokenIds An array of token IDs owned by the specified address.
+    */
+    function getInvoicesByOwner(address owner) external view returns (uint256[] memory tokenIds) {
+        uint256 totalTokens = _tokenIdCounter;
+        uint256 count = balanceOf(owner);
+        tokenIds = new uint256[](count);
+        uint256 index = 0;
+
+        for (uint256 tokenId = 0; tokenId < totalTokens; tokenId++) {
+            if (_ownerOf(tokenId) == owner) {
+                tokenIds[index] = tokenId;
+                index++;
+                if (index >= count) {
+                    break;
+                }
+            }
+        }
+        return tokenIds;
     }
 
     function getInvoice(uint256 tokenId) external view exists(tokenId) returns (Invoice memory) {
