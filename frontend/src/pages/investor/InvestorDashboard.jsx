@@ -17,22 +17,26 @@ import { useFractionalization } from '@/hooks/useFractionalization';
 import { formatEther, formatCurrency } from '@/utils/format';
 import { calculateROI } from '@/utils/helpers';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import { usePortfolio } from '@/hooks/usePortfolio';
 
 export const InvestorDashboard = () => {
   const { account, isConnected } = useWeb3();
   const { getClaimable } = useDistributor();
-  const [stats, setStats] = useState({
-    totalInvested: '0',
-    totalReturns: '0',
-    activePositions: 0,
-    claimableAmount: '0',
-  });
+  const {portfolio, stats, loading: portfolioLoading} = usePortfolio();
   const [loading, setLoading] = useState(true);
   const [chartData, setChartData] = useState([]);
+
+  const totalInvestedNum = Number(stats.totalInvested);
+  const currentValueNum = Number(stats.currentValue);
+  const unrealizedProfit = currentValueNum - totalInvestedNum;
+  const unrealizedProfitPercent = totalInvestedNum > 0 
+    ? (unrealizedProfit / totalInvestedNum) * 100 
+    : 0;
 
   useEffect(() => {
     if (account) {
       loadDashboardData();
+      console.log(stats)
     }
   }, [account]);
 
@@ -52,13 +56,6 @@ export const InvestorDashboard = () => {
       ];
 
       setChartData(mockChartData);
-      
-      setStats({
-        totalInvested: '0',
-        totalReturns: '0',
-        activePositions: 0,
-        claimableAmount: '0',
-      });
     } catch (error) {
       console.error('Error loading dashboard:', error);
     } finally {
@@ -80,15 +77,9 @@ export const InvestorDashboard = () => {
     );
   }
 
-  const roi = calculateROI(
-    parseFloat(stats.totalInvested),
-    parseFloat(stats.totalReturns)
-  );
-
   return (
     <div className="min-h-screen pt-24 pb-12 px-4">
       <div className="max-w-7xl mx-auto">
-        {/* Header */}
         <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
           <div>
             <h1 className="text-4xl font-bold mb-2">Investor Dashboard</h1>
@@ -111,39 +102,53 @@ export const InvestorDashboard = () => {
             {/* Stats Grid */}
             <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
               <Card>
-                <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center justify-between mb-2">
                   <p className="text-gray-400">Total Invested</p>
                   <Wallet className="w-5 h-5 text-primary-400" />
                 </div>
-                <p className="text-3xl font-bold mb-2">
-                  {formatCurrency(stats.totalInvested)}
+                <p className="text-3xl font-bold mb-1">
+                  {portfolioLoading ? '...' : formatEther(stats.totalInvested)}
                 </p>
                 <p className="text-sm text-gray-400">Across {stats.activePositions} positions</p>
               </Card>
 
               <Card>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-gray-400">Current Value</p>
+                  <TrendingUp className="w-5 h-5 text-green-400" />
+                </div>
+                <p className="text-3xl font-bold text-white mb-1">
+                  {portfolioLoading ? '...' : formatEther(stats.currentValue)}
+                </p>
+                <div className={`text-sm flex items-center gap-1 ${unrealizedProfit >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                  {unrealizedProfit >= 0 ? <ArrowUpRight className="w-4 h-4 text-green-400" /> : <ArrowDownRight className="w-4 h-4 text-red-400" />} {unrealizedProfitPercent.toFixed(2)}% 
+                  {unrealizedProfit >= 0 ? ' gain' : ' loss'}
+                </div>
+              </Card>
+
+              {/* <Card>
                 <div className="flex items-center justify-between mb-4">
                   <p className="text-gray-400">Total Returns</p>
                   <TrendingUp className="w-5 h-5 text-green-400" />
                 </div>
                 <p className="text-3xl font-bold text-green-400 mb-2">
-                  {formatCurrency(stats.totalReturns)}
+                  {formatEther(stats.totalValue)}
                 </p>
                 <div className="flex items-center gap-1 text-sm">
                   <ArrowUpRight className="w-4 h-4 text-green-400" />
                   <span className="text-green-400">{roi.toFixed(2)}% ROI</span>
                 </div>
-              </Card>
+              </Card> */}
 
               <Card>
-                <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center justify-between mb-2">
                   <p className="text-gray-400">Claimable</p>
                   <DollarSign className="w-5 h-5 text-accent-400" />
                 </div>
-                <p className="text-3xl font-bold text-accent-400 mb-2">
-                  {formatCurrency(stats.claimableAmount)}
+                <p className="text-3xl font-bold text-white mb-1">
+                  {portfolioLoading ? '...' : formatEther(stats.claimable)}
                 </p>
-                {parseFloat(stats.claimableAmount) > 0 ? (
+                {parseFloat(stats.claimable) > 0 ? (
                   <Link to="/portfolio">
                     <Button variant="secondary" className="w-full text-sm py-2">
                       Claim Now
@@ -155,12 +160,12 @@ export const InvestorDashboard = () => {
               </Card>
 
               <Card>
-                <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center justify-between mb-2">
                   <p className="text-gray-400">Active Positions</p>
                   <PieChart className="w-5 h-5 text-blue-400" />
                 </div>
-                <p className="text-3xl font-bold mb-2">{stats.activePositions}</p>
-                <Link to="/portfolio" className="text-sm text-primary-400 hover:underline">
+                <p className="text-3xl font-bold mb-1">{portfolioLoading ? '...' : stats.activePositions}</p>
+                <Link to="/portfolio" className="text-sm text-primary-400 cursor-pointer hover:underline">
                   View All →
                 </Link>
               </Card>

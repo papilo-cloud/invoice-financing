@@ -50,6 +50,22 @@ export const useDistributor = () => {
     }
   };
 
+  const claimIssuerReturns = async (invoiceTokenId) => {
+    try {
+      setLoading(true);
+      const contract = getContract();
+      const tx = await contract.claimIssuerReturns(invoiceTokenId);
+      await tx.wait();
+      toast.success('Issuer returns claimed successfully!');
+    } catch (error) {
+      console.error('Error claiming issuer returns:', error);
+      toast.error(error.reason || 'Failed to claim issuer returns');
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  }
+
   const getClaimable = async (invoiceTokenId, userAddress) => {
     try {
       const contract = getContract();
@@ -64,6 +80,7 @@ export const useDistributor = () => {
   return {
     receivePayment,
     claimPayout,
+    claimIssuerReturns,
     getClaimable,
     loading,
   };
