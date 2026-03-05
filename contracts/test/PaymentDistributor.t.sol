@@ -76,7 +76,7 @@ contract PaymentDistributorTest is Test {
         vm.prank(payer);
         distributor.receivePayment{value: 50000 ether}(tokenId);
         
-        (uint256 totalPayment, uint256 paymentPerFraction, bool isPaid) = distributor.distributions(tokenId);
+        (uint256 totalPayment, uint256 paymentPerFraction,,, bool isPaid) = distributor.distributions(tokenId);
         
         assertEq(totalPayment, 50000 ether);
         assertEq(paymentPerFraction, 500 ether); // 50000 / 100
@@ -156,7 +156,7 @@ contract PaymentDistributorTest is Test {
         vm.prank(payer);
         distributor.receivePayment{value: minimumAcceptable}(tokenId);
         
-        (uint256 totalPayment,, bool isPaid) = distributor.distributions(tokenId);
+        (uint256 totalPayment,,,, bool isPaid) = distributor.distributions(tokenId);
         assertEq(totalPayment, minimumAcceptable);
         assertTrue(isPaid);
     }
