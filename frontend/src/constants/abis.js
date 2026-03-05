@@ -7,12 +7,13 @@ export const INVOICE_NFT_ABI = [
   "function balanceOf(address owner) external view returns (uint256)",
   "function isVerified(uint256 tokenId) external view returns (bool)",
   "function verifier() external view returns (address)",
-  "function paymentDistributor() external view returns (address)",
   "function getInvoice(uint256 tokenId) view returns (tuple(address issuer, string debtorName, uint256 faceValue, uint256 dueDate, uint256 riskScore, bool isPaid, bool isVerified, uint256 createdAt))",
   "function owner() external view returns (address)",
+  "function getInvoicesByOwner(address owner) external view returns (uint256[] memory tokenIds)",
   
   // Write Functions
   "function createInvoice(string debtorName, uint256 faceValue, uint256 dueDate) external returns (uint256)",
+  'function setVerificationResult(uint256 tokenId, uint256 riskScore, bool success) external',
   "function approve(address to, uint256 tokenId) external",
   "function setApprovalForAll(address operator, bool approved) external",
   "function markVerified(uint256 tokenId, uint256 riskScore) external",
@@ -61,6 +62,16 @@ export const FRACTIONALIZATION_ABI = [
   "function getFractionIdByInvoice(uint256 invoiceTokenId) external view returns (uint256)",
   "function isFractionalized(uint256 invoiceTokenId) external view returns (bool)",
   "function platformFees() external view returns (uint256)",
+  'function holderBalance(address holder, uint256 fractionId) external view returns (uint256)',
+  'function getHolderFractions(address holder, uint256 maxFractionId) external view returns (uint256[] memory fractionIds)',
+  'function getBuyoutInfo(uint256 fractionId) external view returns (tuple(address buyer, uint256 pricePerFraction, uint256 remainingFractions, uint256 escrowedAmount, bool active, bool finalized))',
+  'function getDetailedFractionInfo(uint256 fractionId) external view returns (uint256 invoiceTokenId, uint256 totalFractions, uint256 fractionsSold, uint256 pricePerFraction, address issuer, bool isActive, uint256 issuerProceeds)',
+  'function getBuyoutPrice(uint256 fractionId) external view returns (uint256)',
+  'function getNextFractionId() external view returns (uint256)',
+  'function getAvailableFractions(uint256 fractionId) external view returns (uint256)',
+  'function hasClaimed(uint256 fractionId, address holder) external view returns (bool)',
+
+
   
   // Write Functions
   "function fractionalizeInvoice(uint256 invoiceTokenId, uint256 totalFractions, uint256 pricePerFraction) external returns (uint256)",
@@ -75,6 +86,7 @@ export const FRACTIONALIZATION_ABI = [
   "function emergencyRelease(uint256 fractionId, address recipient) external",
   "function totalSupply(uint256 fractionId) external view returns (uint256)",
   "function withdrawPlatformFees() external",
+  'function reclaimInvoice(uint256 fractionId) external',
   
   // Events
   "event InvoiceFramentalized(uint256 indexed fractionId, uint256 indexed invoiceTokenId, uint256 totalFractions, uint256 pricePerFraction)",
@@ -87,16 +99,20 @@ export const FRACTIONALIZATION_ABI = [
 // PaymentDistributor ABI
 export const DISTRIBUTOR_ABI = [
   // Read Functions
-  "function claimableAmount(uint256 invoiceTokenId, address holder) external view returns (uint256)",
-  "function totalPaid(uint256 invoiceTokenId) external view returns (uint256)",
+  "function claimable(address user, uint256 invoiceTokenId) external view returns (uint256)",
+  'function paymentAmounts(uint256 invoiceTokenId) external view returns (uint256)',
   "function invoiceNFT() external view returns (address)",
   "function fractionalizationPool() external view returns (address)",
+  'function hasUserClaimed(address user, uint256 invoiceTokenId) external view returns (bool)',
+  'function getDistributionDetails(uint256 invoiceTokenId) external view returns (tuple(uint256 totalPayment, uint256 paymentPerFraction, uint256 totalFractions, uint256 fractionsSold, bool isPaid))',
   
   // Write Functions
   "function receivePayment(uint256 invoiceTokenId) external payable",
   "function claim(uint256 invoiceTokenId) external",
+  'function claimIssuerReturns(uint256 invoiceTokenId) external',
   
   // Events
   "event PaymentReceived(uint256 indexed invoiceTokenId, address indexed payer, uint256 amount)",
-  "event PayoutClaimed(uint256 indexed invoiceTokenId, address indexed holder, uint256 amount)",
+  "event Claimed(uint256 indexed invoiceTokenId, address indexed user, uint256 amount)",
+  'event IssuerClaimedReturns(uint256 indexed invoiceTokenId, address indexed issuer, uint256 amount, uint256 unsoldFractions)',
 ];
