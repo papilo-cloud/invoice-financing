@@ -346,7 +346,7 @@ contract InvoiceFractionalizationPoolTest is Test {
             uint256 remainingFractions,
             uint256 escrowedAmount,
             bool active,
-            bool finalized
+            bool finalized,
         ) = pool.buyouts(fractionId);
         
         assertEq(buyoutBuyer, buyer);
