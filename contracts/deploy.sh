@@ -36,6 +36,8 @@ forge script script/Deploy.s.sol:DeployScript \
     --rpc-url $SEPOLIA_RPC_URL \
     --broadcast \
     --verify \
+    --etherscan-api-key $ETHERSCAN_API_KEY \
+    --chain sepolia \
     -vvvv
 
 if [ $? -ne 0 ]; then
