@@ -1,0 +1,8 @@
+{
+  "schedule": "*/30 * * * * *",
+  "chainSelectorName": "ethereum-mainnet",
+  "invoiceNFTAddress": "0x1c3Ff8306cDC82D38A825644e0DbCAf72370CE04",
+  "invoiceVerifierAddress": "0x081288A8953b1BBAAf58Db2B3beac429e9FB127e",
+  "coinGeckoApiUrl": "https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd&include_24hr_change=true",
+  "gasLimit": "500000"
+}
