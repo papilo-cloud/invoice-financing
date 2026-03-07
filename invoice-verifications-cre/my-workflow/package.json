@@ -4,11 +4,7 @@
   "main": "dist/main.js",
   "private": true,
   "scripts": {
-    "postinstall": "bun x cre-setup",
-    "simulate": "cre workflow simulate . --target staging-settings",
-    "simulate-broadcast": "cre workflow simulate . --target staging-settings --broadcast",
-    "deploy:staging": "cre workflow deploy . --target staging-settings",
-    "deploy:production": "cre workflow deploy . --target production-settings"
+    "postinstall": "bun x cre-setup"
   },
   "license": "UNLICENSED",
   "dependencies": {

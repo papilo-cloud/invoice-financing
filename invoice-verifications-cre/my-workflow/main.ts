@@ -29,6 +29,49 @@ import { z } from "zod"
 import { InvoiceNFT, InvoiceVerifier } from "../contracts/abi"
 
 // ============================================================================
+// CONSTANTS
+// ============================================================================
+
+const TRUSTED_COMPANIES = [
+  'APPLE',
+  'MICROSOFT',
+  'GOOGLE',
+  'ALPHABET',
+  'AMAZON',
+  'META',
+  'FACEBOOK',
+  'TESLA',
+  'NVIDIA',
+  'JPMORGAN',
+  'VISA',
+  'MASTERCARD',
+  'WALMART',
+  'COCA-COLA',
+  'PEPSI',
+  'NETFLIX',
+  'ADOBE',
+  'ORACLE',
+  'SALESFORCE',
+  'IBM',
+  'CISCO',
+  'INTEL',
+  'BERKSHIRE',
+  'JOHNSON',
+  'EXXON',
+  'CHEVRON',
+  'PFIZER',
+  'MERCK',
+  'ABBVIE',
+  'BOEING',
+  'CATERPILLAR',
+  'GOLDMAN',
+  'MORGAN STANLEY',
+  'BANK OF AMERICA',
+  'WELLS FARGO',
+  'CITIGROUP',
+] as const
+
+// ============================================================================
 // TYPES & CONFIGURATION
 // ============================================================================
 
@@ -62,6 +105,22 @@ type VerificationResult = {
   riskScore: bigint
   success: boolean
   txHash: string
+}
+
+// ============================================================================
+// HELPER FUNCTIONS
+// ============================================================================
+
+/**
+ * Check if debtor name matches a trusted company
+ * Returns true if the debtor name contains any trusted company name
+ */
+function isTrustedCompany(debtorName: string): boolean {
+  const upperDebtorName = debtorName.toUpperCase()
+  
+  return TRUSTED_COMPANIES.some(company => 
+    upperDebtorName.includes(company)
+  )
 }
 
 // ============================================================================
@@ -124,58 +183,112 @@ function calculateRiskScore(
   runtime: Runtime<Config>
 ): bigint {
   let score = 50 // Base score
+    const adjustments: string[] = []
 
-  // 1. Time factor (0-30 days: +20 risk, 30-60: +10, 60+: +0)
+  // 1. TRUSTED COMPANY CHECK (Major reduction)
+
+  const isTrusted = isTrustedCompany(invoice.debtorName)
+  
+  if (isTrusted) {
+    score -= 20
+    adjustments.push(`Trusted company: -20`)
+    runtime.log(` Trusted company detected: ${invoice.debtorName}`)
+  } else {
+    adjustments.push(`Unknown company: +0`)
+  }
+
+  // 2. Time factor (0-30 days: +20 risk, 30-60: +10, 60+: +0)
   const now = BigInt(Math.floor(Date.now() / 1000))
   const daysUntilDue = Number((invoice.dueDate - now) / 86400n)
   
-  if (daysUntilDue < 30) {
+  if (daysUntilDue < 0) {
+    // Already overdue - maximum risk
+    score += 30
+    adjustments.push(`Overdue: +30`)
+  } else if (daysUntilDue < 7) {
+    // Less than a week - high risk
     score += 20
+    adjustments.push(`Due in ${daysUntilDue}d: +20`)
+  } else if (daysUntilDue < 30) {
+    // Less than a month - medium risk
+    score += 15
+    adjustments.push(`Due in ${daysUntilDue}d: +15`)
   } else if (daysUntilDue < 60) {
     score += 10
+    adjustments.push(`Due in ${daysUntilDue}d: +10`)
+  } else if (daysUntilDue < 90) {
+    // 60-90 days - low risk
+    score += 5
+    adjustments.push(`Due in ${daysUntilDue}d: +5`)
+  } else {
+    // 90+ days - very low risk
+    adjustments.push(`Due in ${daysUntilDue}d: +0`)
   }
 
-  // 2. Invoice size factor (larger invoices = higher risk)
+  // 3. Invoice size factor (larger invoices = higher risk)
   // Convert faceValue from wei to ETH (divide by 10^18)
   const invoiceInEth = Number(invoice.faceValue) / 1e18
   
   if (invoiceInEth > 100) {
     score += 15
+    adjustments.push(`Size ${invoiceInEth.toFixed(2)} ETH: +15`)
   } else if (invoiceInEth > 50) {
     score += 10
+    adjustments.push(`Size ${invoiceInEth.toFixed(2)} ETH: +10`)
   } else if (invoiceInEth > 10) {
     score += 5
+    adjustments.push(`Size ${invoiceInEth.toFixed(2)} ETH: +5`)
+  } else {
+    adjustments.push(`Size ${invoiceInEth.toFixed(2)} ETH: +0`)
   }
 
-  // 3. Market sentiment adjustment
+  // 4. Market sentiment adjustment
   const priceChange = marketData.priceChange24h
   
   if (priceChange < -10) {
     // Major price drop = higher risk
     score += 15
+    adjustments.push(`Market crash ${priceChange.toFixed(1)}%: +15`)
   } else if (priceChange < -5) {
     // Moderate drop
     score += 10
+    adjustments.push(`Market down ${priceChange.toFixed(1)}%: +10`)
   } else if (priceChange > 10) {
     // Major pump = also risky (bubble territory)
     score += 5
-  } else if (priceChange > 5 && marketData.ethPrice > 4000) {
+    adjustments.push(`Market surge ${priceChange.toFixed(1)}%: +5`)
+  } else if (priceChange > 5 && marketData.ethPrice > 3000) {
     // Healthy growth with high price = lower risk
     score -= 5
+    adjustments.push(`Market growth ${priceChange.toFixed(1)}%: -5`)
+  } else {
+    adjustments.push(`Market stable ${priceChange.toFixed(1)}%: +0`)
   }
 
-  // 4. Price stability bonus
+  // 5. Price stability bonus
   if (marketData.ethPrice > 4000 && Math.abs(priceChange) < 3) {
     // High price + low volatility = bonus
     score -= 10
+    adjustments.push(`Stable market: -10`)
+  }
+
+  // 6. COMBINED TRUSTED + STABLE BONUS
+
+  if (isTrusted && daysUntilDue > 60 && invoiceInEth < 50) {
+    // Trusted company + long term + reasonable size = extra bonus
+    score -= 10
+    adjustments.push(`Premium conditions: -10`)
   }
 
   // Ensure score is between 0 and 100
-  score = Math.max(0, Math.min(100, score))
+  const finalScore = Math.max(0, Math.min(100, score))
 
-  runtime.log(`Risk calculation: Base=50, Days=${daysUntilDue}, Size=${invoiceInEth.toFixed(2)} ETH, Market=${priceChange.toFixed(2)}%, Final=${score}`)
+  runtime.log(`Risk calculation breakdown:`)
+  runtime.log(`  Base score: 50`)
+  adjustments.forEach(adj => runtime.log(`  ${adj}`))
+  runtime.log(`  Final score: ${finalScore}/100`)
 
-  return BigInt(score)
+  return BigInt(finalScore)
 }
 
 // ============================================================================
@@ -218,39 +331,55 @@ const onInvoiceCreated = (runtime: Runtime<Config>, log: EVMLog): VerificationRe
 
   runtime.log(`Decoded event - TokenId: ${tokenId}, Debtor: ${debtorName}, Amount: ${faceValue.toString()} wei`)
 
-  const callData = encodeFunctionData({
-    abi: InvoiceNFT,
-    functionName: "invoices",
-    args: [tokenId],
-  })
-
-  const contractCall = evmClient
-    .callContract(runtime, {
-      call: encodeCallMsg({
-        from: zeroAddress,
-        to: runtime.config.invoiceNFTAddress as Address,
-        data: callData,
-      }),
-      blockNumber: LAST_FINALIZED_BLOCK_NUMBER,
-    })
-    .result()
-
-  const invoiceResult = decodeFunctionResult({
-    abi: InvoiceNFT,
-    functionName: "invoices",
-    data: bytesToHex(contractCall.data),
-  }) as [Address, string, bigint, bigint, bigint, boolean, boolean, bigint]
-
   const invoice: InvoiceData = {
     tokenId,
-    issuer: invoiceResult[0],
-    debtorName: invoiceResult[1],
-    faceValue: invoiceResult[2],
-    dueDate: invoiceResult[3],
-    createdAt: invoiceResult[7],
+    issuer: issuer as Address,
+    debtorName,
+    faceValue,
+    dueDate,
+    createdAt: BigInt(Math.floor(Date.now() / 1000))
   }
 
-  runtime.log(`Invoice loaded - Debtor: ${invoice.debtorName}, Value: ${invoice.faceValue.toString()} wei, Due: ${invoice.dueDate.toString()}`)
+  const dueDate_readable = new Date(Number(invoice.dueDate) * 1000).toISOString();
+  const daysUntilDue = Math.floor(Number((invoice.dueDate - BigInt(Math.floor(Date.now() / 1000))) / 86400n))
+
+  // const callData = encodeFunctionData({
+  //   abi: InvoiceNFT,
+  //   functionName: "invoices",
+  //   args: [tokenId],
+  // })
+
+  // const contractCall = evmClient
+  //   .callContract(runtime, {
+  //     call: encodeCallMsg({
+  //       from: zeroAddress,
+  //       to: runtime.config.invoiceNFTAddress as Address,
+  //       data: callData,
+  //     }),
+  //     blockNumber: LAST_FINALIZED_BLOCK_NUMBER,
+  //   })
+  //   .result()
+
+  // const invoiceResult = decodeFunctionResult({
+  //   abi: InvoiceNFT,
+  //   functionName: "invoices",
+  //   data: bytesToHex(contractCall.data),
+  // }) as [Address, string, bigint, bigint, bigint, boolean, boolean, bigint]
+
+  // const invoice: InvoiceData = {
+  //   tokenId,
+  //   issuer: invoiceResult[0],
+  //   debtorName: invoiceResult[1],
+  //   faceValue: invoiceResult[2],
+  //   dueDate: invoiceResult[3],
+  //   createdAt: invoiceResult[7],
+  // }
+
+  runtime.log(`Invoice data prepared`)
+  runtime.log(`Invoice loaded - Debtor: ${invoice.debtorName}, Value: ${invoice.faceValue.toString()} wei, Due: ${dueDate_readable}`)
+  runtime.log(`  Days until due: ${daysUntilDue}`)
+
+  runtime.log("\nSTEP 2: Fetching market data with node consensus...")
 
   const ethPriceConsensus = runtime
     .runInNodeMode(
@@ -271,14 +400,26 @@ const onInvoiceCreated = (runtime: Runtime<Config>, log: EVMLog): VerificationRe
     priceChange24h: priceChange24hConsensus,
   }
 
-  runtime.log(`Market consensus - ETH: $${marketData.ethPrice}, Change: ${marketData.priceChange24h.toFixed(2)}%`)
+  runtime.log(`  Market data consensus reached`)
+  runtime.log(`  ETH Price: $${marketData.ethPrice.toFixed(2)}`)
+  runtime.log(`  24h Change: ${marketData.priceChange24h > 0 ? '+' : ''}${marketData.priceChange24h.toFixed(2)}%`)
 
   const riskScore = calculateRiskScore(invoice, marketData, runtime)
   
   // Determine success based on risk score (score < 80 = success)
   const success = riskScore < 80n
 
-  runtime.log(`Risk score calculated: ${riskScore}/100, Success: ${success}`)
+    const riskRating = 
+    riskScore < 40n ? "AAA (Excellent)" :
+    riskScore < 60n ? "AA (Good)" :
+    riskScore < 80n ? "A (Acceptable)" :
+    "High Risk (Rejected)"
+
+  runtime.log(`  Risk assessment complete`)
+  runtime.log(`  Risk Score: ${riskScore}/100`)
+  runtime.log(`  Rating: ${riskRating}`)
+  runtime.log(`  Verification: ${success ? 'APPROVED' : 'REJECTED'}`)
+
 
   // Encode the verification result for the consumer contract
   const reportData = encodeAbiParameters(
@@ -314,6 +455,10 @@ const onInvoiceCreated = (runtime: Runtime<Config>, log: EVMLog): VerificationRe
   runtime.log(`Verification complete! TxHash: ${txHash}`)
   runtime.log(`View on Etherscan: https://sepolia.etherscan.io/tx/${txHash}`)
 
+  runtime.log("\n" + "=".repeat(60))
+  runtime.log("WORKFLOW COMPLETE")
+  runtime.log("=".repeat(60))
+  
   return {
     tokenId,
     riskScore,
