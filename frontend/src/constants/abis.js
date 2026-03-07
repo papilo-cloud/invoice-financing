@@ -29,22 +29,32 @@ export const INVOICE_NFT_ABI = [
 // InvoiceVerifier ABI
 export const VERIFIER_ABI = [
   // Read Functions
-  "function verificationSource() external view returns (string)",
-  "function subscriptionId() external view returns (uint64)",
-  "function donId() external view returns (bytes32)",
-  "function invoiceNFT() external view returns (address)",
-  "function owner() external view returns (address)",
+  'function getVerification(uint256 tokenId) external view returns (uint256 riskScore, bool isVerified, uint256 verifiedAt)',
+  'function isVerified(uint256 tokenId) external view returns (bool)',
+  'function getVerificationStatus(uint256 tokenId) external view returns (uint8 status, uint256 riskScore)',
+  'function getForwarderAddress() external view returns (address)',
+  'function getExpectedWorkflowId() external view returns (bytes32)',
+  'function getExpectedAuthor() external view returns (address)',
+  'function getExpectedWorkflowName() external view returns (bytes10)',
+  'function verifications(uint256) external view returns (uint256 riskScore, bool isVerified, uint256 verifiedAt)',
   
   // Write Functions
-  "function requestVerification(uint256 invoiceId) external returns (bytes32)",
-  "function manualVerify(uint256 invoiceId, uint256 riskScore) external",
-  "function setVerificationSource(string source) external",
-  "function updateConfig(bytes32 _donId, uint64 _subscriptionId, uint32 _callbackGasLimit) external",
+  'function manualVerify(uint256 tokenId, uint256 riskScore) external',
+  'function batchManualVerify(uint256[] tokenIds, uint256[] riskScores) external',
+  'function setForwarderAddress(address _forwarder) external',
+  'function setExpectedWorkflowId(bytes32 _id) external',
+  'function setExpectedAuthor(address _author) external',
+  'function setExpectedWorkflowName(string _name) external',
   
   // Events
-  "event VerificationRequested(bytes32 indexed requestId, uint256 indexed invoiceId)",
-  "event VerificationFulfilled(uint256 indexed invoiceId, uint256 riskScore, bool success)",
-  "event VerificationFailed(uint256 indexed invoiceId, bytes32 requestId, string reason)",
+  'event VerificationReceived(uint256 indexed tokenId, uint256 riskScore, bool success, uint256 timestamp)',
+  'event VerificationFailed(uint256 indexed tokenId, string reason)',
+  'event ManualVerification(uint256 indexed tokenId, uint256 riskScore, address indexed verifier)',
+  'event ForwarderAddressUpdated(address indexed previousForwarder, address indexed newForwarder)',
+  'event ExpectedAuthorUpdated(address indexed previousAuthor, address indexed newAuthor)',
+  'event ExpectedWorkflowNameUpdated(bytes10 indexed previousName, bytes10 indexed newName)',
+  'event ExpectedWorkflowIdUpdated(bytes32 indexed previousId, bytes32 indexed newId)',
+  'event SecurityWarning(string message)',
 ];
 
 // InvoiceFractionalizationPool ABI
