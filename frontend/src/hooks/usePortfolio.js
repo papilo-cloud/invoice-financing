@@ -18,7 +18,7 @@ export const usePortfolio = () => {
     currentValue: '0',
     claimable: '0',
     activePositions: 0,
-    fractionsOwned: 0,
+    totalFractions: 0,
     totalClaimed: '0',
     lifetimeInvested: '0',
     lifetimeProfit: '0',
@@ -188,7 +188,7 @@ const loadPortfolio = async () => {
 
 const getClaimHistory = async (distributorContract, userAddress) => {
   try {
-    const filter = distributorContract.filters.PayoutClaimed(null, userAddress);
+    const filter = distributorContract.filters.Claimed(null, userAddress);
     const events = await distributorContract.queryFilter(filter, 0, 'latest');
     
     return events.map(event => ({

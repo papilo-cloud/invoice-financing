@@ -1,16 +1,98 @@
-# React + Vite
+# InvoiceFlow Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Decentralized invoice financing platform built with React, ethers.js, and Tailwind CSS.
 
-Currently, two official plugins are available:
+## Prerequisites
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- Node.js 18+ 
+- MetaMask or compatible Web3 wallet
+- Deployed smart contracts on Sepolia testnet
 
-## React Compiler
+## Installation
+```bash
+# Install dependencies
+npm install
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+# Copy environment file
+cp .env.example .env.local
 
-## Expanding the ESLint configuration
+# Update contract addresses in .env.local
+```
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## Environment Variables
+
+Update `.env.local` with your deployed contract addresses:
+```bash
+VITE_INVOICE_NFT_ADDRESS=0x...
+VITE_INVOICE_VERIFIER_ADDRESS=0x...
+VITE_FRACTIONALIZATION_ADDRESS=0x...
+VITE_PAYMENT_DISTRIBUTOR_ADDRESS=0x...
+VITE_SEPOLIA_RPC_URL=https://eth-sepolia.g.alchemy.com/v2/YOUR_KEY
+```
+
+## Development
+```bash
+# Start dev server
+npm run dev
+
+# Build for production
+npm run build
+
+# Preview production build
+npm run preview
+```
+
+## Features
+
+### For Businesses
+- Create invoice NFTs
+- Chainlink-verified invoices
+- Fractionalize invoices for instant liquidity
+- Withdraw proceeds
+- Dynamic on-chain NFT images
+
+### For Investors
+- Browse verified invoice marketplace
+- Buy fractional ownership
+- Track portfolio
+- Claim payouts when invoices are paid
+- Transfer fractions (ERC1155)
+
+## Architecture
+```
+src/
+├── components/       # Reusable UI components
+├── pages/           # Route pages
+├── hooks/           # Custom React hooks for contracts
+├── contexts/        # React contexts (Web3)
+├── utils/           # Helper functions
+└── constants/       # Contract addresses & ABIs
+```
+
+## Smart Contract Integration
+
+The frontend interacts with 4 main contracts:
+
+1. **InvoiceNFT** - Mint & manage invoice NFTs
+2. **InvoiceVerifier** - Chainlink Functions verification
+3. **InvoiceFractionalizationPool** - Fractionalize & trade
+4. **PaymentDistributor** - Handle payments & claims
+
+## Tech Stack
+
+- **React 18** - UI framework
+- **Vite** - Build tool
+- **ethers.js v6** - Ethereum library
+- **Tailwind CSS** - Styling
+- **Framer Motion** - Animations
+- **React Hot Toast** - Notifications
+- **React Router** - Routing
+
+## Deployment
+```bash
+# Build
+npm run build
+
+# Deploy to Vercel
+vercel deploy
+```

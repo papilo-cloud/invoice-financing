@@ -124,5 +124,6 @@ export const DISTRIBUTOR_ABI = [
   // Events
   "event PaymentReceived(uint256 indexed invoiceTokenId, address indexed payer, uint256 amount)",
   "event Claimed(uint256 indexed invoiceTokenId, address indexed user, uint256 amount)",
+  "event TransferFailed(uint256 indexed invoiceTokenId, address indexed investor, uint256 amount, string reason)",
   'event IssuerClaimedReturns(uint256 indexed invoiceTokenId, address indexed issuer, uint256 amount, uint256 unsoldFractions)',
 ];

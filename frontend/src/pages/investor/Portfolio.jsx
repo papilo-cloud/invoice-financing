@@ -82,7 +82,7 @@ export const Portfolio = () => {
               <div>
                 <p className="text-gray-400 mb-1">Current Value</p>
                 <p className="text-3xl font-bold">
-                  {formatEther(stats.totalValue)} ETH
+                  {formatEther(stats.currentValue)} ETH
                 </p>
               </div>
               <TrendingUp className="w-12 h-12 text-white opacity-50" />
@@ -93,7 +93,7 @@ export const Portfolio = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-gray-400 text-sm mb-1">Fractions Owned</p>
-                <p className="text-3xl font-bold">{stats.fractionsOwned}</p>
+                <p className="text-3xl font-bold">{stats.totalFractions}</p>
               </div>
               <Package className="w-12 h-12 text-white opacity-50" />
             </div>
