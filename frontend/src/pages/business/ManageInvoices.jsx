@@ -188,7 +188,7 @@ export const ManageInvoices = () => {
                 )}
               </div>
 
-              {invoice.isVerified && !invoice.isPaid && (
+              {/* {invoice.isVerified && !invoice.isPaid && (
                 <div className="mt-6">
                   <Button
                     onClick={() => setShowFractionalizeModal(true)}
@@ -198,7 +198,7 @@ export const ManageInvoices = () => {
                     Fractionalize Invoice
                   </Button>
                 </div>
-              )}
+              )} */}
             </Card>
 
             {/* Verification Panel */}
@@ -227,7 +227,7 @@ export const ManageInvoices = () => {
               onRedeem={() => navigate('/business')}
             />
 
-            {invoice.isVerified && !invoice.isPaid && (
+            {invoice.isVerified && !fractionInfo && !invoice.isPaid && (
               <Card>
                 <h3 className="text-xl font-bold mb-4">Next Steps</h3>
                 <Button
