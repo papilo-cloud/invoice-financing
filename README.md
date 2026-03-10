@@ -77,7 +77,7 @@ Transform unpaid invoices into liquid assets. Small businesses can fractionalize
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/yourusername/invoice-financing.git
+git clone https://github.com/papilo-cloud/invoice-financing.git
 cd invoice-financing
 
 # 2. Install contract dependencies
@@ -88,7 +88,7 @@ cd frontend
 npm install
 
 # 4. Install CRE workflow dependencies
-cd ../invoice-verification-cre
+cd ../invoice-verifications-cre
 bun install
 ```
 
@@ -109,7 +109,7 @@ forge script script/Deploy.s.sol:DeployScript \
 ### Deploy CRE Workflow
 
 ```bash
-cd invoice-verification-cre
+cd invoice-verifications-cre
 
 # Update config with deployed addresses
 # Edit config.staging.json
@@ -133,6 +133,7 @@ npm run dev
 
 - [Architecture](./docs/ARCHITECTURE.md) - Technical design and contract specifications
 - [Deployment](./docs/DEPLOYMENT.md) - Complete deployment guide
+- [User Guide](./docs/USER_GUIDE.md) - How to use the platform
 
 
 ## Testing
@@ -142,7 +143,7 @@ npm run dev
 forge test
 
 # CRE workflow simulation
-cd invoice-verification-cre
+cd invoice-verifications-cre
 cre workflow simulate my-workflow --target staging-settings
 ```
 
